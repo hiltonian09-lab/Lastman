@@ -11,6 +11,7 @@ import { getSyncStatus } from "@/lib/db/sync-status";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
+import { getRecentFormForTeams } from "@/lib/db/team-form";
 import { PrizeFundCard } from "@/components/prize-fund-card";
 import { LeagueInfoCard } from "@/components/league-info-card";
 import { PickForm } from "./pick-form";
@@ -79,6 +80,9 @@ export default async function PlayerGamePage({
     ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
+  const optionTeamIds = Array.from(new Set(options.map((o) => o.teamId)));
+  const recentFormMap = await getRecentFormForTeams(optionTeamIds);
+  const recentForm = Object.fromEntries(recentFormMap);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
@@ -112,6 +116,7 @@ export default async function PlayerGamePage({
           slug={slug}
           options={options}
           currentPickTeamId={currentPick?.team_id ?? null}
+          recentForm={recentForm}
         />
         {fixturesSync && (
           <p className="mt-3 text-xs text-foreground-muted">
