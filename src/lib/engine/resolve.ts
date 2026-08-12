@@ -4,6 +4,7 @@ import { getTeamsByIds } from "@/lib/db/teams";
 import { sendEmail } from "@/lib/email/resend";
 import { eliminationEmail } from "@/lib/email/templates";
 import { getAppUrl } from "@/lib/http/app-url";
+import { recordRoundSnapshot } from "@/lib/db/stats";
 import {
   getPicksWithFixturesForRound,
   setPickResult,
@@ -83,6 +84,7 @@ export async function tryResolveRound(env: Env, round: RoundRow): Promise<void> 
   }
 
   await markRoundResolved(env, round.id);
+  await recordRoundSnapshot(round, env);
 
   const stillActive = await getActiveEntries(env, round.game_id);
   if (stillActive.length === 1) {

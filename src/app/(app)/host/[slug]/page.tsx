@@ -7,6 +7,7 @@ import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { getRoundsWithStats, getEntriesWithoutPickForRound } from "@/lib/db/round-stats";
+import { getGameTrend } from "@/lib/db/stats";
 import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { formatRelativeTime } from "@/lib/format/relative-time";
@@ -31,13 +32,14 @@ export default async function GameDashboardPage({
   if (!isOwnerOrPlatformOwner) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
-  const [entries, adminFee, messages, fixturesSync, origin, rounds] = await Promise.all([
+  const [entries, adminFee, messages, fixturesSync, origin, rounds, trend] = await Promise.all([
     listEntriesForGame(game.id),
     getAdminFeeChargeByGameId(game.id),
     listGameMessages(game.id),
     getSyncStatus("live_scores"),
     getOrigin(),
     getRoundsWithStats(game.id),
+    getGameTrend(game.id),
   ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
@@ -169,6 +171,33 @@ export default async function GameDashboardPage({
                     : r.status === "locked"
                       ? `${r.pending} awaiting results`
                       : "upcoming"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {trend.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            Survival trend
+          </h2>
+          <div className="mt-3 flex flex-col gap-2">
+            {trend.map((t) => (
+              <div
+                key={t.round_number}
+                className="glass-card flex items-center justify-between px-4 py-3 text-sm"
+              >
+                <span>Round {t.round_number}</span>
+                <span className="text-foreground-muted">
+                  {t.active_players} still in
+                  {t.eliminated_this_round > 0
+                    ? ` · ${t.eliminated_this_round} out`
+                    : ""}
+                  {t.auto_assigned_picks > 0
+                    ? ` · ${t.auto_assigned_picks} auto-pick${t.auto_assigned_picks > 1 ? "s" : ""}`
+                    : ""}
                 </span>
               </div>
             ))}
