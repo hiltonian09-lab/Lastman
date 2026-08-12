@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/*
+  "Royal Blue Premium" — The Gauntlet design tokens (PLAN.md §9)
+  Dark navy is the default, premium sports-book feel. Light mode is the
+  alternate, not the primary experience.
+*/
+:root {
+  --background: #0b0f1f;
+  --background-elevated: #10162c;
+  --foreground: #eef1fb;
+  --foreground-muted: #9aa3c7;
+
+  --royal-blue: #2a3fce;
+  --royal-blue-deep: #1b2a6b;
+  --gold: #c9a344;
+
+  --status-alive: #34c98f;
+  --status-eliminated: #6b7280;
+  --status-pending: #e8b64c;
+
+  --border-glass: rgba(238, 241, 251, 0.08);
+  --surface-glass: rgba(255, 255, 255, 0.04);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #f5f7fc;
+    --background-elevated: #ffffff;
+    --foreground: #10162c;
+    --foreground-muted: #4b5375;
+
+    --border-glass: rgba(16, 22, 44, 0.08);
+    --surface-glass: rgba(16, 22, 44, 0.03);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-elevated: var(--background-elevated);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+
+  --color-royal-blue: var(--royal-blue);
+  --color-royal-blue-deep: var(--royal-blue-deep);
+  --color-gold: var(--gold);
+
+  --color-status-alive: var(--status-alive);
+  --color-status-eliminated: var(--status-eliminated);
+  --color-status-pending: var(--status-pending);
+
+  --color-border-glass: var(--border-glass);
+  --color-surface-glass: var(--surface-glass);
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-space-grotesk);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.glass-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(12px);
+  border-radius: 1rem;
+}
