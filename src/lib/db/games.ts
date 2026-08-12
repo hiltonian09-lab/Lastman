@@ -1,0 +1,149 @@
+import "server-only";
+import { getEnv } from "@/lib/cloudflare";
+
+export interface GameRules {
+  lives: number; // 0-3, default 0
+  missedPickPolicy: "lowest_alphabetical" | "eliminate";
+  tiebreaker: "split" | "total_goals";
+}
+
+export const DEFAULT_RULES: GameRules = {
+  lives: 0,
+  missedPickPolicy: "lowest_alphabetical",
+  tiebreaker: "split",
+};
+
+export interface GameRow {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+  type: "private" | "platform_official";
+  league_ids: string; // JSON array
+  rules_json: string; // JSON GameRules
+  display_entry_fee_cents: number | null;
+  display_prize_pool_note: string | null;
+  currency: string;
+  max_players: number | null;
+  status: "draft" | "open" | "locked" | "in_progress" | "blocked" | "completed" | "cancelled";
+  blocked_reason: string | null;
+  invite_code: string | null;
+  visibility: "public" | "invite_only";
+  starts_at: string | null;
+  created_at: string;
+}
+
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "game"
+  );
+}
+
+function generateInviteCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I ambiguity
+  let code = "";
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  for (const b of bytes) code += alphabet[b % alphabet.length];
+  return `LMS-${code}`;
+}
+
+export interface CreateGameParams {
+  ownerId: string;
+  name: string;
+  leagueIds: string[];
+  maxPlayers: number | null;
+  rules: GameRules;
+  displayEntryFeeCents: number | null;
+  displayPrizePoolNote: string | null;
+  visibility: "public" | "invite_only";
+}
+
+export async function createGame(params: CreateGameParams): Promise<GameRow> {
+  const env = await getEnv();
+  const id = crypto.randomUUID();
+
+  const baseSlug = slugify(params.name);
+  let slug = baseSlug;
+  let attempt = 0;
+  // Ensure slug uniqueness without unbounded retries
+  while (attempt < 5) {
+    const existing = await env.DB.prepare("SELECT id FROM games WHERE slug = ?")
+      .bind(slug)
+      .first();
+    if (!existing) break;
+    attempt++;
+    slug = `${baseSlug}-${crypto.randomUUID().slice(0, 4)}`;
+  }
+
+  const inviteCode = generateInviteCode();
+
+  await env.DB.prepare(
+    `INSERT INTO games
+      (id, name, slug, owner_id, type, league_ids, rules_json, display_entry_fee_cents,
+       display_prize_pool_note, currency, max_players, status, invite_code, visibility)
+     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?)`,
+  )
+    .bind(
+      id,
+      params.name.trim(),
+      slug,
+      params.ownerId,
+      JSON.stringify(params.leagueIds),
+      JSON.stringify(params.rules),
+      params.displayEntryFeeCents,
+      params.displayPrizePoolNote,
+      params.maxPlayers,
+      inviteCode,
+      params.visibility,
+    )
+    .run();
+
+  const game = await getGameById(id);
+  if (!game) throw new Error("Failed to create game");
+  return game;
+}
+
+export async function getGameById(id: string): Promise<GameRow | null> {
+  const env = await getEnv();
+  const row = await env.DB.prepare("SELECT * FROM games WHERE id = ?").bind(id).first<GameRow>();
+  return row ?? null;
+}
+
+export async function getGameBySlug(slug: string): Promise<GameRow | null> {
+  const env = await getEnv();
+  const row = await env.DB.prepare("SELECT * FROM games WHERE slug = ?")
+    .bind(slug)
+    .first<GameRow>();
+  return row ?? null;
+}
+
+export async function getGameByInviteCode(code: string): Promise<GameRow | null> {
+  const env = await getEnv();
+  const row = await env.DB.prepare("SELECT * FROM games WHERE invite_code = ?")
+    .bind(code.trim().toUpperCase())
+    .first<GameRow>();
+  return row ?? null;
+}
+
+export async function listGamesOwnedBy(ownerId: string): Promise<GameRow[]> {
+  const env = await getEnv();
+  const { results } = await env.DB.prepare(
+    "SELECT * FROM games WHERE owner_id = ? ORDER BY created_at DESC",
+  )
+    .bind(ownerId)
+    .all<GameRow>();
+  return results;
+}
+
+export async function listPublicOpenGames(): Promise<GameRow[]> {
+  const env = await getEnv();
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM games WHERE visibility = 'public' AND status IN ('open', 'in_progress')
+     ORDER BY created_at DESC LIMIT 50`,
+  ).all<GameRow>();
+  return results;
+}

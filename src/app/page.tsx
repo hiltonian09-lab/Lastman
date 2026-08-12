@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
@@ -6,18 +8,18 @@ export default function Home() {
           The Gauntlet
         </span>
         <nav className="flex items-center gap-6 text-sm text-foreground-muted">
-          <a href="#" className="hover:text-foreground">
+          <Link href="/games" className="hover:text-foreground">
             Browse games
-          </a>
-          <a href="#" className="hover:text-foreground">
+          </Link>
+          <Link href="/login" className="hover:text-foreground">
             Sign in
-          </a>
-          <a
-            href="#"
+          </Link>
+          <Link
+            href="/host/new"
             className="rounded-full bg-royal-blue px-4 py-2 font-medium text-white hover:bg-royal-blue-deep transition-colors"
           >
             Host a game
-          </a>
+          </Link>
         </nav>
       </header>
 
@@ -35,18 +37,18 @@ export default function Home() {
         </p>
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <a
-            href="#"
+          <Link
+            href="/join"
             className="rounded-full bg-royal-blue px-8 py-3 font-medium text-white hover:bg-royal-blue-deep transition-colors"
           >
             Join a game
-          </a>
-          <a
-            href="#"
+          </Link>
+          <Link
+            href="/host/new"
             className="rounded-full border border-border-glass px-8 py-3 font-medium hover:bg-surface-glass transition-colors"
           >
             Host your own
-          </a>
+          </Link>
         </div>
 
         <section className="mt-24 grid w-full max-w-4xl gap-6 sm:grid-cols-3">
