@@ -12,6 +12,7 @@ export default {
     const result = await runTick(env);
     console.log(
       `[cron] live scores synced: ${result.liveScoresSynced}, full schedule synced: ${result.fullScheduleSynced}, ` +
+        `previous-season standings synced: ${result.previousSeasonStandingsSynced}, ` +
         `reminders sent: ${result.remindersSent}, rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
     );
   },

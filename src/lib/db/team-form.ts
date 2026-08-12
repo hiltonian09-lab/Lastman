@@ -55,3 +55,67 @@ export async function getRecentFormForTeams(
 
   return form;
 }
+
+export interface H2HPair {
+  teamId: string;
+  opponentId: string;
+}
+
+/**
+ * Head-to-head form for a set of team/opponent pairs, computed from fixtures
+ * already in D1 — no extra API calls needed. The result for each `teamId` is
+ * the last `limit` meetings from that team\'s perspective (W/D/L).
+ */
+export async function getHeadToHeadForTeams(
+  pairs: H2HPair[],
+  limit = 5,
+  env?: Env,
+): Promise<Map<string, FormResult[]>> {
+  const e = env ?? (await getEnv());
+  if (pairs.length === 0) return new Map();
+
+  const allTeamIds = Array.from(
+    new Set([...pairs.map((p) => p.teamId), ...pairs.map((p) => p.opponentId)]),
+  );
+  const placeholders = allTeamIds.map(() => "?").join(",");
+
+  const { results } = await e.DB.prepare(
+    `SELECT home_team_id, away_team_id, home_score, away_score, kickoff_at
+     FROM fixtures
+     WHERE status = 'finished'
+       AND (home_team_id IN (${placeholders}) OR away_team_id IN (${placeholders}))
+     ORDER BY kickoff_at DESC`,
+  )
+    .bind(...allTeamIds, ...allTeamIds)
+    .all<{
+      home_team_id: string;
+      away_team_id: string;
+      home_score: number;
+      away_score: number;
+      kickoff_at: string;
+    }>();
+
+  const form = new Map<string, FormResult[]>();
+  for (const pair of pairs) {
+    form.set(pair.teamId, []);
+  }
+
+  for (const fixture of results) {
+    for (const pair of pairs) {
+      const teamResults = form.get(pair.teamId);
+      if (!teamResults || teamResults.length >= limit) continue;
+
+      const isTeamHome = fixture.home_team_id === pair.teamId && fixture.away_team_id === pair.opponentId;
+      const isTeamAway = fixture.away_team_id === pair.teamId && fixture.home_team_id === pair.opponentId;
+      if (!isTeamHome && !isTeamAway) continue;
+
+      const own = isTeamHome ? fixture.home_score : fixture.away_score;
+      const opp = isTeamHome ? fixture.away_score : fixture.home_score;
+      if (own > opp) teamResults.push("W");
+      else if (own === opp) teamResults.push("D");
+      else teamResults.push("L");
+    }
+  }
+
+  return form;
+}

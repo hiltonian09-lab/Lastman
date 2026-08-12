@@ -8,6 +8,7 @@ import type { GameRow } from "@/lib/db/games";
 export interface PickOption {
   fixtureId: string;
   teamId: string;
+  opponentId: string;
   teamName: string;
   opponentName: string;
   isHome: boolean;
@@ -81,6 +82,7 @@ export async function getAvailablePicks(
       options.push({
         fixtureId: fixture.id,
         teamId: fixture.home_team_id,
+        opponentId: fixture.away_team_id,
         teamName: home,
         opponentName: away,
         isHome: true,
@@ -92,6 +94,7 @@ export async function getAvailablePicks(
       options.push({
         fixtureId: fixture.id,
         teamId: fixture.away_team_id,
+        opponentId: fixture.home_team_id,
         teamName: away,
         opponentName: home,
         isHome: false,

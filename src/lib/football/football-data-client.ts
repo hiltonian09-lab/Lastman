@@ -74,6 +74,37 @@ interface FdTeamsResponse {
   teams: FdTeam[];
 }
 
+interface FdSeason {
+  id: number;
+  startDate: string;
+  endDate: string;
+  currentMatchday: number | null;
+}
+
+interface FdCompetition {
+  id: number;
+  code: string;
+  name: string;
+  currentSeason: FdSeason;
+}
+
+export interface FdStandingEntry {
+  position: number;
+  team: FdTeam;
+  playedGames: number;
+  won: number;
+  draw: number;
+  lost: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+}
+
+interface FdStandingsResponse {
+  season: FdSeason;
+  standings: { table: FdStandingEntry[] }[];
+}
+
 /** competitionCode = football-data.org code, e.g. "PL", "ELC", "PD" */
 export function getTeams(competitionCode: string, env?: Env) {
   return cachedFetch<FdTeamsResponse>(
@@ -111,4 +142,20 @@ export function getMatchesByMatchday(competitionCode: string, matchday: number, 
     60 * 10,
     env,
   ).then((r) => r.matches);
+}
+
+export function getCompetition(competitionCode: string, env?: Env) {
+  return cachedFetch<FdCompetition>(
+    `/competitions/${competitionCode}`,
+    60 * 60 * 24 * 7, // season metadata changes rarely
+    env,
+  );
+}
+
+export function getStandings(competitionCode: string, season: number, env?: Env) {
+  return cachedFetch<FdStandingsResponse>(
+    `/competitions/${competitionCode}/standings?season=${season}`,
+    60 * 60 * 24 * 7, // standings don't change after season ends
+    env,
+  ).then((r) => r.standings[0]?.table ?? []);
 }

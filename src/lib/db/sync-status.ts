@@ -1,6 +1,6 @@
 import { getEnv } from "@/lib/cloudflare";
 
-export type SyncKind = "full_schedule" | "live_scores";
+export type SyncKind = "full_schedule" | "live_scores" | "previous_season_standings";
 
 export interface SyncStatusRow {
   kind: SyncKind;

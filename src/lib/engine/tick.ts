@@ -4,10 +4,13 @@ import { chargeBalanceIfDue } from "./balance-charge";
 import { tryResolveRound } from "./resolve";
 import { sendRoundReminder } from "./round-reminder";
 import { runFullScheduleSync, runLiveScoresSync } from "./fixture-sync";
+import { runPreviousSeasonStandingsSync } from "./standings-sync";
+import { isSyncDue } from "@/lib/db/sync-status";
 
 export interface TickResult {
   fullScheduleSynced: number;
   liveScoresSynced: number;
+  previousSeasonStandingsSynced: number;
   remindersSent: number;
   roundsLocked: number;
   roundsResolved: number;
@@ -32,6 +35,11 @@ export async function runTick(env: Env): Promise<TickResult> {
   const liveScoresSynced = await runLiveScoresSync(env);
   const fullScheduleSynced = await runFullScheduleSync(env);
 
+  let previousSeasonStandingsSynced = 0;
+  if (await isSyncDue(env, "previous_season_standings", 168)) {
+    previousSeasonStandingsSynced = await runPreviousSeasonStandingsSync(env);
+  }
+
   const reminderRounds = await getRoundsNeedingReminder(env);
   for (const round of reminderRounds) {
     await sendRoundReminder(env, round);
@@ -53,6 +61,7 @@ export async function runTick(env: Env): Promise<TickResult> {
   return {
     fullScheduleSynced,
     liveScoresSynced,
+    previousSeasonStandingsSynced,
     remindersSent: reminderRounds.length,
     roundsLocked: dueRounds.length,
     roundsResolved: lockedRounds.length,

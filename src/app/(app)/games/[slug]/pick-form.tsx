@@ -20,6 +20,12 @@ function formatKickoff(iso: string): string {
   });
 }
 
+function formatOrdinal(n: number): string {
+  const suffixes = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]}`;
+}
+
 const FORM_COLOR: Record<FormResult, string> = {
   W: "bg-status-alive text-black",
   D: "bg-status-pending text-black",
@@ -49,11 +55,15 @@ export function PickForm({
   options,
   currentPickTeamId,
   recentForm,
+  headToHead,
+  previousPositions,
 }: {
   slug: string;
   options: PickOption[];
   currentPickTeamId: string | null;
   recentForm: Record<string, FormResult[]>;
+  headToHead: Record<string, FormResult[]>;
+  previousPositions: Record<string, number>;
 }) {
   const action = submitPickAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -111,9 +121,20 @@ export function PickForm({
         )}
 
         {selectedOption && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-foreground-muted">{selectedOption.teamName} form:</span>
-            <FormBadges form={recentForm[selectedOption.teamId]} />
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-foreground-muted">{selectedOption.teamName} form:</span>
+              <FormBadges form={recentForm[selectedOption.teamId]} />
+            </div>
+            <div className="flex items-center gap-2 text-foreground-muted">
+              <span>vs {selectedOption.opponentName}:</span>
+              <FormBadges form={headToHead[selectedOption.teamId]} />
+              {previousPositions[selectedOption.teamId] !== undefined && (
+                <span className="text-gold">
+                  {formatOrdinal(previousPositions[selectedOption.teamId])} last season
+                </span>
+              )}
+            </div>
           </div>
         )}
 
@@ -151,7 +172,7 @@ export function PickForm({
                       const o = opt as PickOption;
                       const isThisTeamSelected = selectedTeamId === o.teamId;
                       return (
-                        <span key={o.teamId} className="flex items-center gap-2">
+                        <span key={o.teamId} className="flex flex-wrap items-center gap-2">
                           {i === 1 && <span className="text-foreground-muted">vs</span>}
                           <span
                             className={`text-sm ${isThisTeamSelected ? "font-semibold text-gold" : ""}`}
@@ -159,6 +180,12 @@ export function PickForm({
                             {o.teamName}
                           </span>
                           <FormBadges form={recentForm[o.teamId]} />
+                          <FormBadges form={headToHead[o.teamId]} />
+                          {previousPositions[o.teamId] !== undefined && (
+                            <span className="text-[10px] text-gold">
+                              {formatOrdinal(previousPositions[o.teamId])} last season
+                            </span>
+                          )}
                         </span>
                       );
                     })}
