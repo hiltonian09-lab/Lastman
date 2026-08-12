@@ -3,7 +3,6 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listGamesForUser } from "@/lib/db/game-entries";
 import { listGamesOwnedBy } from "@/lib/db/games";
-import { logoutAction } from "../(auth)/actions";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -16,35 +15,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
-      <div className="flex items-center justify-between">
-        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
-          Hey, {user.name}
-        </h1>
-        <div className="flex items-center gap-3">
-          {user.role === "platform_owner" && (
-            <Link
-              href="/owner"
-              className="rounded-full border border-gold px-4 py-2 text-sm text-gold hover:bg-surface-glass"
-            >
-              Owner console
-            </Link>
-          )}
-          <Link
-            href="/feedback"
-            className="text-sm text-foreground-muted hover:text-foreground"
-          >
-            Feedback
-          </Link>
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="rounded-full border border-border-glass px-4 py-2 text-sm hover:bg-surface-glass"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      </div>
+      <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
+        Hey, {user.name}
+      </h1>
 
       <div className="mt-8 flex gap-4">
         <Link

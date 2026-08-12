@@ -11,11 +11,8 @@ export default {
   async scheduled(_event, env: Env) {
     const result = await runTick(env);
     console.log(
-      `[cron] live scores synced: ${result.liveScoresSynced}` +
-        (result.fullScheduleSynced !== null
-          ? `, full schedule synced: ${result.fullScheduleSynced}`
-          : "") +
-        `, reminders sent: ${result.remindersSent}, rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
+      `[cron] live scores synced: ${result.liveScoresSynced}, full schedule synced: ${result.fullScheduleSynced}, ` +
+        `reminders sent: ${result.remindersSent}, rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
     );
   },
 } satisfies ExportedHandler<Env>;

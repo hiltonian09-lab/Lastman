@@ -7,9 +7,12 @@ import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { getRoundsWithStats, getEntriesWithoutPickForRound } from "@/lib/db/round-stats";
+import { getLeaguesByIds } from "@/lib/db/leagues";
+import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { getOrigin } from "@/lib/http/origin";
 import { PrizeFundCard } from "@/components/prize-fund-card";
+import { LeagueInfoCard } from "@/components/league-info-card";
 import { BroadcastForm } from "./broadcast-form";
 import { InviteLink } from "./invite-link";
 
@@ -42,6 +45,12 @@ export default async function GameDashboardPage({
   const missingPicks = currentRound
     ? await getEntriesWithoutPickForRound(game.id, currentRound.id)
     : [];
+
+  const leagueIds: string[] = JSON.parse(game.league_ids);
+  const [leagues, upcomingFixtures] = await Promise.all([
+    getLeaguesByIds(leagueIds),
+    getUpcomingFixturesPreview(leagueIds),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
@@ -79,6 +88,7 @@ export default async function GameDashboardPage({
 
       <div className="mt-6 flex flex-col gap-4">
         <InviteLink code={game.invite_code ?? ""} origin={origin} />
+        <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}
           prizePoolNote={game.display_prize_pool_note}

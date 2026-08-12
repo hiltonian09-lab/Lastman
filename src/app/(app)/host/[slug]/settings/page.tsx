@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug, hasGameStarted } from "@/lib/db/games";
 import { listLeagues } from "@/lib/db/leagues";
@@ -24,10 +25,12 @@ export default async function GameSettingsPage({
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-1 flex-col px-6 py-16">
-      <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
+      <Link href={`/host/${slug}`} className="text-sm text-foreground-muted hover:text-foreground">
+        &larr; Back to {game.name}
+      </Link>
+      <h1 className="font-[family-name:var(--font-heading)] mt-4 text-2xl font-semibold">
         Game settings
       </h1>
-      <p className="mt-1 text-sm text-foreground-muted">{game.name}</p>
 
       {started && (
         <p className="glass-card mt-6 p-4 text-sm text-status-pending">

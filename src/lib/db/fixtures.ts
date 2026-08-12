@@ -27,48 +27,58 @@ export function mapMatchStatus(fdStatus: string): FixtureRow["status"] {
   return STATUS_MAP[fdStatus] ?? "scheduled";
 }
 
-export async function upsertFixture(
-  params: {
-    externalId: string;
-    leagueId: string;
-    homeTeamId: string;
-    awayTeamId: string;
-    kickoffAt: string;
-    status: FixtureRow["status"];
-    homeScore: number | null;
-    awayScore: number | null;
-  },
-  env?: Env,
-): Promise<string> {
-  const e = env ?? (await getEnv());
-  const existing = await e.DB.prepare("SELECT id FROM fixtures WHERE external_id = ?")
-    .bind(params.externalId)
-    .first<{ id: string }>();
+export interface UpsertFixtureParams {
+  externalId: string;
+  leagueId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  kickoffAt: string;
+  status: FixtureRow["status"];
+  homeScore: number | null;
+  awayScore: number | null;
+}
 
-  const id = existing?.id ?? crypto.randomUUID();
-
-  await e.DB.prepare(
+/**
+ * A single fixture's upsert as a prepared-but-not-executed statement, so
+ * callers can batch many together into one D1 round-trip via env.DB.batch()
+ * instead of awaiting them one at a time. No pre-SELECT needed: a fresh
+ * random id is only used on first insert — on conflict, SQLite leaves the
+ * existing row's id untouched since the UPDATE clause never sets it.
+ */
+export function buildUpsertFixtureStatement(
+  env: Env,
+  params: UpsertFixtureParams,
+): D1PreparedStatement {
+  return env.DB.prepare(
     `INSERT INTO fixtures (id, external_id, league_id, home_team_id, away_team_id, kickoff_at, status, home_score, away_score, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT (external_id) DO UPDATE SET
        status = excluded.status, home_score = excluded.home_score,
        away_score = excluded.away_score, kickoff_at = excluded.kickoff_at,
        updated_at = datetime('now')`,
-  )
-    .bind(
-      id,
-      params.externalId,
-      params.leagueId,
-      params.homeTeamId,
-      params.awayTeamId,
-      params.kickoffAt,
-      params.status,
-      params.homeScore,
-      params.awayScore,
-    )
-    .run();
+  ).bind(
+    crypto.randomUUID(),
+    params.externalId,
+    params.leagueId,
+    params.homeTeamId,
+    params.awayTeamId,
+    params.kickoffAt,
+    params.status,
+    params.homeScore,
+    params.awayScore,
+  );
+}
 
-  return id;
+const BATCH_CHUNK_SIZE = 50;
+
+/** Runs many prepared statements as chunked D1 batches — each chunk is one network round-trip. */
+export async function runBatchedStatements(
+  env: Env,
+  statements: D1PreparedStatement[],
+): Promise<void> {
+  for (let i = 0; i < statements.length; i += BATCH_CHUNK_SIZE) {
+    await env.DB.batch(statements.slice(i, i + BATCH_CHUNK_SIZE));
+  }
 }
 
 export async function getUsedTeamIds(gameEntryId: string, env?: Env): Promise<Set<string>> {

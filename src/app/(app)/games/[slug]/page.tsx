@@ -9,7 +9,10 @@ import { listEntriesForGame } from "@/lib/db/game-entries";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { formatRelativeTime } from "@/lib/format/relative-time";
+import { getLeaguesByIds } from "@/lib/db/leagues";
+import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { PrizeFundCard } from "@/components/prize-fund-card";
+import { LeagueInfoCard } from "@/components/league-info-card";
 import { PickForm } from "./pick-form";
 
 export default async function PlayerGamePage({
@@ -63,13 +66,17 @@ export default async function PlayerGamePage({
   }
 
   const round = await ensureCurrentRound(game);
-  const [options, currentPick, entries, messages, fixturesSync] = await Promise.all([
-    getAvailablePicks(game, entry.id),
-    getPickForRound(entry.id, round.id),
-    listEntriesForGame(game.id),
-    listGameMessages(game.id),
-    getSyncStatus("live_scores"),
-  ]);
+  const leagueIds: string[] = JSON.parse(game.league_ids);
+  const [options, currentPick, entries, messages, fixturesSync, leagues, upcomingFixtures] =
+    await Promise.all([
+      getAvailablePicks(game, entry.id),
+      getPickForRound(entry.id, round.id),
+      listEntriesForGame(game.id),
+      listGameMessages(game.id),
+      getSyncStatus("live_scores"),
+      getLeaguesByIds(leagueIds),
+      getUpcomingFixturesPreview(leagueIds),
+    ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
 
@@ -92,7 +99,8 @@ export default async function PlayerGamePage({
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-4">
+        <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}
           prizePoolNote={game.display_prize_pool_note}

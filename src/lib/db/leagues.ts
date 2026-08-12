@@ -29,3 +29,32 @@ export async function getLeaguesByIds(ids: string[], env?: Env): Promise<LeagueR
     .all<LeagueRow>();
   return results;
 }
+
+/**
+ * Leagues whose full-schedule sync is missing or stale. Only ever returns a
+ * handful at a time (capped by the caller) so a single cron invocation
+ * never has to process all 6 leagues' ~380 fixtures each in one go — that's
+ * what was causing Cloudflare to cut the invocation off mid-run.
+ */
+export async function getLeaguesDueForFullSync(
+  env: Env,
+  thresholdHours: number,
+  limit: number,
+): Promise<LeagueRow[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT id, name, country, provider_id FROM leagues
+     WHERE full_schedule_synced_at IS NULL
+        OR datetime(full_schedule_synced_at) <= datetime('now', ?)
+     ORDER BY full_schedule_synced_at IS NOT NULL, full_schedule_synced_at
+     LIMIT ?`,
+  )
+    .bind(`-${thresholdHours} hours`, limit)
+    .all<LeagueRow>();
+  return results;
+}
+
+export async function markLeagueFullSynced(env: Env, leagueId: string): Promise<void> {
+  await env.DB.prepare("UPDATE leagues SET full_schedule_synced_at = datetime('now') WHERE id = ?")
+    .bind(leagueId)
+    .run();
+}
