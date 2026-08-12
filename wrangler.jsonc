@@ -26,8 +26,8 @@
   },
   "vars": {
     "BRAND_NAME": "The Gauntlet",
-    // TODO: update once the real domain is live (e.g. https://thegauntlet.app) —
-    // used for links inside cron-sent emails, which have no request to derive an origin from
-    "APP_URL": "https://the-gauntlet.<your-subdomain>.workers.dev"
+    // TODO: update to the real domain once it's live — used for links inside
+    // cron-sent emails, which have no request to derive an origin from
+    "APP_URL": "https://the-gauntlet.hiltonian09.workers.dev"
   }
 }
