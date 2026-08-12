@@ -5,6 +5,22 @@ const BASE_URL = "https://api.football-data.org/v4";
 // Free tier is 10 req/min — cache aggressively, never call this on every page load.
 const DEFAULT_TTL_SECONDS = 60 * 15;
 
+// 60s / 10 req = 6000ms exactly at the limit — pad it so we're never on the edge.
+// A single tick can fire up to ~12 real calls back to back (6 for live-scores +
+// 6 more on the days the full-schedule sync is also due), so every real call —
+// regardless of which sync job or league it's for — is paced through this one
+// choke point rather than relying on each job separately staying under budget.
+const MIN_CALL_INTERVAL_MS = 6_500;
+let lastCallAt = 0;
+
+async function waitForRateLimit(): Promise<void> {
+  const elapsed = Date.now() - lastCallAt;
+  if (elapsed < MIN_CALL_INTERVAL_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_CALL_INTERVAL_MS - elapsed));
+  }
+  lastCallAt = Date.now();
+}
+
 async function cachedFetch<T>(
   path: string,
   ttlSeconds = DEFAULT_TTL_SECONDS,
@@ -16,6 +32,7 @@ async function cachedFetch<T>(
   const cached = await e.CACHE.get(cacheKey, "json");
   if (cached) return cached as T;
 
+  await waitForRateLimit();
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { "X-Auth-Token": e.FOOTBALL_DATA_API_TOKEN },
   });
