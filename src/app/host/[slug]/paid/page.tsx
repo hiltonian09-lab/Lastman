@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { reconcileMinimumFeeSession } from "@/lib/stripe/admin-fee-checkout";
 import { getGameBySlug } from "@/lib/db/games";
+import { getOrigin } from "@/lib/http/origin";
+import { InviteLink } from "../invite-link";
 
 export default async function GamePaidPage({
   params,
@@ -21,6 +23,8 @@ export default async function GamePaidPage({
 
   if (!paid && game.status === "draft") redirect(`/host/${slug}/setup`);
 
+  const origin = await getOrigin();
+
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div className="mb-3 h-2 w-2 rounded-full bg-status-alive" />
@@ -28,16 +32,11 @@ export default async function GamePaidPage({
         &ldquo;{game.name}&rdquo; is open
       </h1>
       <p className="mt-2 text-sm text-foreground-muted">
-        Share this code or link with your players to get them in.
+        Share this link with your players to get them in.
       </p>
 
-      <div className="glass-card mt-8 w-full p-6">
-        <p className="text-xs uppercase tracking-wide text-foreground-muted">
-          Invite code
-        </p>
-        <p className="font-[family-name:var(--font-heading)] mt-1 text-2xl font-semibold text-gold">
-          {game.invite_code}
-        </p>
+      <div className="mt-8 w-full text-left">
+        <InviteLink code={game.invite_code ?? ""} origin={origin} />
       </div>
 
       <Link

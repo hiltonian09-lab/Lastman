@@ -43,5 +43,5 @@ export async function createOfficialGameAction(
     rules,
   });
 
-  redirect(`/games/${game.slug}`);
+  redirect(`/host/${game.slug}`);
 }

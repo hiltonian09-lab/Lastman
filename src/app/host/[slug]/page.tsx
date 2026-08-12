@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug } from "@/lib/db/games";
 import { listEntriesForGame } from "@/lib/db/game-entries";
@@ -6,7 +7,9 @@ import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { formatRelativeTime } from "@/lib/format/relative-time";
+import { getOrigin } from "@/lib/http/origin";
 import { BroadcastForm } from "./broadcast-form";
+import { InviteLink } from "./invite-link";
 
 export default async function GameDashboardPage({
   params,
@@ -22,11 +25,12 @@ export default async function GameDashboardPage({
   if (game.owner_id !== user.id) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
-  const [entries, adminFee, messages, fixturesSync] = await Promise.all([
+  const [entries, adminFee, messages, fixturesSync, origin] = await Promise.all([
     listEntriesForGame(game.id),
     getAdminFeeChargeByGameId(game.id),
     listGameMessages(game.id),
     getSyncStatus("live_scores"),
+    getOrigin(),
   ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
@@ -45,19 +49,29 @@ export default async function GameDashboardPage({
         </div>
       )}
 
-      <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
-        {game.name}
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
+          {game.name}
+        </h1>
+        <Link
+          href={`/host/${slug}/settings`}
+          className="rounded-full border border-border-glass px-4 py-2 text-sm hover:bg-surface-glass"
+        >
+          Settings
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-foreground-muted">
-        Status: {game.status} · Invite code:{" "}
-        <span className="text-gold">{game.invite_code}</span> · {activeCount}/
-        {entries.length} still in
+        Status: {game.status} · {activeCount}/{entries.length} still in
       </p>
       {fixturesSync && (
         <p className="mt-1 text-xs text-foreground-muted">
           Fixtures updated {formatRelativeTime(fixturesSync.last_synced_at)}
         </p>
       )}
+
+      <div className="mt-6">
+        <InviteLink code={game.invite_code ?? ""} origin={origin} />
+      </div>
 
       {adminFee && (
         <div className="glass-card mt-6 p-4 text-sm">

@@ -215,6 +215,59 @@ export async function listGamesWithStatus(
   return results;
 }
 
+/** True once any round has locked — leagues/rules shouldn't change mid-game. */
+export async function hasGameStarted(gameId: string): Promise<boolean> {
+  const env = await getEnv();
+  const row = await env.DB.prepare(
+    "SELECT id FROM rounds WHERE game_id = ? AND status != 'upcoming' LIMIT 1",
+  )
+    .bind(gameId)
+    .first();
+  return !!row;
+}
+
+export interface UpdateGameSettingsParams {
+  leagueIds?: string[];
+  maxPlayers?: number | null;
+  missedPickPolicy?: GameRules["missedPickPolicy"];
+  displayEntryFeeCents?: number | null;
+  displayPrizePoolNote?: string | null;
+  visibility?: "public" | "invite_only";
+}
+
+export async function updateGameSettings(
+  gameId: string,
+  params: UpdateGameSettingsParams,
+): Promise<void> {
+  const env = await getEnv();
+  const game = await getGameById(gameId);
+  if (!game) throw new Error("Game not found");
+
+  const rules = JSON.parse(game.rules_json) as GameRules;
+  if (params.missedPickPolicy) rules.missedPickPolicy = params.missedPickPolicy;
+
+  await env.DB.prepare(
+    `UPDATE games SET
+       league_ids = ?, rules_json = ?, max_players = ?,
+       display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?
+     WHERE id = ?`,
+  )
+    .bind(
+      JSON.stringify(params.leagueIds ?? JSON.parse(game.league_ids)),
+      JSON.stringify(rules),
+      params.maxPlayers !== undefined ? params.maxPlayers : game.max_players,
+      params.displayEntryFeeCents !== undefined
+        ? params.displayEntryFeeCents
+        : game.display_entry_fee_cents,
+      params.displayPrizePoolNote !== undefined
+        ? params.displayPrizePoolNote
+        : game.display_prize_pool_note,
+      params.visibility ?? game.visibility,
+      gameId,
+    )
+    .run();
+}
+
 export async function setGameStatus(
   gameId: string,
   status: GameRow["status"],

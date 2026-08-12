@@ -7,12 +7,17 @@ import type { PickOption } from "@/lib/football/round-pool";
 const initialState: PickFormState = {};
 
 function formatKickoff(iso: string): string {
+  // Explicit timeZone so this renders identically on the server (SSR) and the
+  // client (hydration) regardless of the visitor's local timezone — without
+  // it, toLocaleString can disagree between the two and React throws a
+  // hydration mismatch (error #418).
   return new Date(iso).toLocaleString("en-GB", {
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/London",
   });
 }
 
