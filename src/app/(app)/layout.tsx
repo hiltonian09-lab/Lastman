@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { logoutAction } from "@/app/(auth)/actions";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -18,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/games" className="hover:text-foreground">
             Browse games
           </Link>
+          <ThemeToggle />
           {user ? (
             <>
               {user.role === "platform_owner" && (

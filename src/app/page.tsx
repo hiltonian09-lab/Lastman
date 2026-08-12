@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
           <Link href="/login" className="hover:text-foreground">
             Sign in
           </Link>
+          <ThemeToggle />
           <Link
             href="/host/new"
             className="rounded-full bg-royal-blue px-4 py-2 font-medium text-white hover:bg-royal-blue-deep transition-colors"

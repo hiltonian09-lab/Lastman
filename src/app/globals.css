@@ -1,38 +1,47 @@
 @import "tailwindcss";
 
 /*
-  "Royal Blue Premium" — The Gauntlet design tokens (PLAN.md §9)
-  Dark navy is the default, premium sports-book feel. Light mode is the
-  alternate, not the primary experience.
+  "Royal Blue Premium" — The Gauntlet design tokens (PLAN.md §9), refreshed:
+  Everton blue instead of pure navy-black, explicit light/dark toggle (via
+  ThemeToggle setting [data-theme] on <html>, not just prefers-color-scheme),
+  glassy premium finish matching hilton-forge's approach.
 */
 :root {
-  --background: #0b0f1f;
-  --background-elevated: #10162c;
+  --background: #05070f;
+  --background-elevated: #0d1428;
   --foreground: #eef1fb;
-  --foreground-muted: #9aa3c7;
+  --foreground-muted: #8b93a1;
 
-  --royal-blue: #2a3fce;
-  --royal-blue-deep: #1b2a6b;
+  --royal-blue: #0042c7;
+  --royal-blue-deep: #002a80;
   --gold: #c9a344;
 
   --status-alive: #34c98f;
   --status-eliminated: #6b7280;
   --status-pending: #e8b64c;
 
-  --border-glass: rgba(238, 241, 251, 0.08);
-  --surface-glass: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(238, 241, 251, 0.1);
+  --glass-fill: rgba(255, 255, 255, 0.05);
+  --glass-fill-strong: rgba(255, 255, 255, 0.09);
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: #f5f7fc;
-    --background-elevated: #ffffff;
-    --foreground: #10162c;
-    --foreground-muted: #4b5375;
+/* Explicit toggle, not OS preference — ThemeToggle sets this on <html> and
+   persists the choice, same pattern as hilton-forge. */
+:root[data-theme="light"] {
+  --background: #f4f6fc;
+  --background-elevated: #ffffff;
+  --foreground: #0d1428;
+  --foreground-muted: #5c6470;
 
-    --border-glass: rgba(16, 22, 44, 0.08);
-    --surface-glass: rgba(16, 22, 44, 0.03);
-  }
+  --royal-blue: #0037a6;
+  --royal-blue-deep: #00256e;
+  --gold: #96731f;
+
+  --glass-border: rgba(13, 20, 40, 0.12);
+  --glass-fill: rgba(13, 20, 40, 0.035);
+  --glass-fill-strong: rgba(13, 20, 40, 0.07);
+  color-scheme: light;
 }
 
 @theme inline {
@@ -49,22 +58,86 @@
   --color-status-eliminated: var(--status-eliminated);
   --color-status-pending: var(--status-pending);
 
-  --color-border-glass: var(--border-glass);
-  --color-surface-glass: var(--surface-glass);
+  /* Kept as aliases so existing border-border-glass / bg-surface-glass
+     utility classes across the app keep working unchanged. */
+  --color-border-glass: var(--glass-border);
+  --color-surface-glass: var(--glass-fill);
 
   --font-sans: var(--font-inter);
   --font-heading: var(--font-space-grotesk);
 }
 
-body {
+html {
   background: var(--background);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--royal-blue) 22%, transparent), transparent 42%),
+    radial-gradient(circle at 88% 15%, color-mix(in srgb, var(--gold) 14%, transparent), transparent 48%),
+    radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--royal-blue) 8%, transparent), transparent 55%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--gold) 35%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-fill-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--glass-fill-strong);
+  border-radius: 999px;
 }
 
 .glass-card {
-  background: var(--surface-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(155deg, var(--glass-fill-strong), var(--glass-fill) 60%);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border-radius: 1rem;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 12px 32px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme="light"] .glass-card {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 8px 24px rgba(13, 20, 40, 0.08);
+}
+
+/* Native selects: color-scheme is inherited from :root so the OS-rendered
+   option list stays readable in both themes. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b93a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.5rem !important;
+}
+select option {
+  background: var(--background-elevated);
+  color: var(--foreground);
+}
+:root input,
+:root select,
+:root textarea {
+  color: var(--foreground) !important;
+}
+:root[data-theme="light"] input,
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea {
+  background-color: var(--glass-fill) !important;
 }
