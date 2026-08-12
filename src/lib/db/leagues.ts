@@ -10,9 +10,9 @@ export interface LeagueRow {
   provider_id: string;
 }
 
-export async function listLeagues(): Promise<LeagueRow[]> {
-  const env = await getEnv();
-  const { results } = await env.DB.prepare(
+export async function listLeagues(env?: Env): Promise<LeagueRow[]> {
+  const e = env ?? (await getEnv());
+  const { results } = await e.DB.prepare(
     "SELECT id, name, country, provider_id FROM leagues ORDER BY name",
   ).all<LeagueRow>();
   return results;

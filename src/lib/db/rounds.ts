@@ -1,5 +1,5 @@
 import { getEnv } from "@/lib/cloudflare";
-import { syncGameweekFixtures } from "@/lib/football/round-pool";
+import { getGameweekFixtures } from "@/lib/football/round-pool";
 import type { GameRow } from "./games";
 
 export interface RoundRow {
@@ -30,7 +30,7 @@ export async function ensureCurrentRound(game: GameRow, env?: Env): Promise<Roun
     return existing;
   }
 
-  const fixtures = await syncGameweekFixtures(game, e);
+  const fixtures = await getGameweekFixtures(game, e);
   const earliestKickoff = fixtures.length
     ? fixtures.map((f) => f.kickoff_at).sort()[0]
     : new Date(Date.now() + 7 * 86_400_000).toISOString();

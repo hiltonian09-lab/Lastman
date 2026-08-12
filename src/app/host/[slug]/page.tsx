@@ -4,6 +4,8 @@ import { getGameBySlug } from "@/lib/db/games";
 import { listEntriesForGame } from "@/lib/db/game-entries";
 import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
+import { getSyncStatus } from "@/lib/db/sync-status";
+import { formatRelativeTime } from "@/lib/format/relative-time";
 import { BroadcastForm } from "./broadcast-form";
 
 export default async function GameDashboardPage({
@@ -20,10 +22,11 @@ export default async function GameDashboardPage({
   if (game.owner_id !== user.id) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
-  const [entries, adminFee, messages] = await Promise.all([
+  const [entries, adminFee, messages, fixturesSync] = await Promise.all([
     listEntriesForGame(game.id),
     getAdminFeeChargeByGameId(game.id),
     listGameMessages(game.id),
+    getSyncStatus("live_scores"),
   ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
@@ -50,6 +53,11 @@ export default async function GameDashboardPage({
         <span className="text-gold">{game.invite_code}</span> · {activeCount}/
         {entries.length} still in
       </p>
+      {fixturesSync && (
+        <p className="mt-1 text-xs text-foreground-muted">
+          Fixtures updated {formatRelativeTime(fixturesSync.last_synced_at)}
+        </p>
+      )}
 
       {adminFee && (
         <div className="glass-card mt-6 p-4 text-sm">

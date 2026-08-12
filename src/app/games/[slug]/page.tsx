@@ -6,6 +6,8 @@ import { ensureCurrentRound } from "@/lib/db/rounds";
 import { getAvailablePicks } from "@/lib/football/round-pool";
 import { listEntriesForGame } from "@/lib/db/game-entries";
 import { listGameMessages } from "@/lib/db/messages";
+import { getSyncStatus } from "@/lib/db/sync-status";
+import { formatRelativeTime } from "@/lib/format/relative-time";
 import { PickForm } from "./pick-form";
 
 export default async function PlayerGamePage({
@@ -53,11 +55,12 @@ export default async function PlayerGamePage({
   }
 
   const round = await ensureCurrentRound(game);
-  const [options, currentPick, entries, messages] = await Promise.all([
+  const [options, currentPick, entries, messages, fixturesSync] = await Promise.all([
     getAvailablePicks(game, entry.id),
     getPickForRound(entry.id, round.id),
     listEntriesForGame(game.id),
     listGameMessages(game.id),
+    getSyncStatus("live_scores"),
   ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
@@ -87,6 +90,11 @@ export default async function PlayerGamePage({
           options={options}
           currentPickTeamId={currentPick?.team_id ?? null}
         />
+        {fixturesSync && (
+          <p className="mt-3 text-xs text-foreground-muted">
+            Fixtures updated {formatRelativeTime(fixturesSync.last_synced_at)}
+          </p>
+        )}
       </div>
 
       <section className="mt-10">

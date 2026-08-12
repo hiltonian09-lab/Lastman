@@ -66,6 +66,15 @@ export function getTeams(competitionCode: string, env?: Env) {
   ).then((r) => r.teams);
 }
 
+/** Full season, one call — used only by the cron's full-schedule sync (every 3 days). */
+export function getAllMatches(competitionCode: string, env?: Env) {
+  return cachedFetch<FdMatchesResponse>(
+    `/competitions/${competitionCode}/matches`,
+    60 * 60 * 24, // this is already a 3-day-cadence job; no need for a short TTL on top
+    env,
+  ).then((r) => r.matches);
+}
+
 export function getMatchesInRange(
   competitionCode: string,
   dateFrom: string,
