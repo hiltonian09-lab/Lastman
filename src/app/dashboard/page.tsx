@@ -20,14 +20,30 @@ export default async function DashboardPage() {
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold">
           Hey, {user.name}
         </h1>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="rounded-full border border-border-glass px-4 py-2 text-sm hover:bg-surface-glass"
+        <div className="flex items-center gap-3">
+          {user.role === "platform_owner" && (
+            <Link
+              href="/owner"
+              className="rounded-full border border-gold px-4 py-2 text-sm text-gold hover:bg-surface-glass"
+            >
+              Owner console
+            </Link>
+          )}
+          <Link
+            href="/feedback"
+            className="text-sm text-foreground-muted hover:text-foreground"
           >
-            Sign out
-          </button>
-        </form>
+            Feedback
+          </Link>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="rounded-full border border-border-glass px-4 py-2 text-sm hover:bg-surface-glass"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="mt-8 flex gap-4">

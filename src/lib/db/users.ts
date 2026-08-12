@@ -19,6 +19,26 @@ export async function getUserByEmail(email: string): Promise<UserRow | null> {
   return row ?? null;
 }
 
+/**
+ * Bootstrap mechanism for the platform_owner role — no self-serve UI for
+ * this, deliberately. Any account whose email is listed in the
+ * PLATFORM_OWNER_EMAILS secret gets promoted the moment it logs in or signs
+ * up. Idempotent, safe to call every time.
+ */
+export async function syncPlatformOwnerRole(userId: string, email: string): Promise<void> {
+  const env = await getEnv();
+  const owners = (env.PLATFORM_OWNER_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (!owners.includes(email.toLowerCase())) return;
+
+  await env.DB.prepare("UPDATE users SET role = 'platform_owner' WHERE id = ? AND role != 'platform_owner'")
+    .bind(userId)
+    .run();
+}
+
 export async function createUser(params: {
   email: string;
   name: string;

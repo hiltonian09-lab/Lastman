@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
-import { createUser, getUserByEmail } from "@/lib/db/users";
+import { createUser, getUserByEmail, syncPlatformOwnerRole } from "@/lib/db/users";
 
 export interface AuthFormState {
   error?: string;
@@ -28,6 +28,7 @@ export async function signupAction(
 
   const passwordHash = await hashPassword(password);
   const user = await createUser({ email, name, passwordHash });
+  await syncPlatformOwnerRole(user.id, user.email);
   await createSession(user.id);
 
   redirect("/dashboard");
@@ -46,6 +47,7 @@ export async function loginAction(
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) return { error: "Incorrect email or password." };
 
+  await syncPlatformOwnerRole(user.id, user.email);
   await createSession(user.id);
   redirect("/dashboard");
 }

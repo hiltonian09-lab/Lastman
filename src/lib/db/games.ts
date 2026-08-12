@@ -106,6 +106,60 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
   return game;
 }
 
+export interface CreateOfficialGameParams {
+  ownerId: string;
+  name: string;
+  leagueIds: string[];
+  maxPlayers: number | null;
+  rules: GameRules;
+}
+
+/**
+ * Platform-official games (PLAN.md §8): created by the Platform Owner,
+ * visible to everyone, and exempt from the admin fee entirely — they open
+ * immediately with no Stripe step and no `admin_fee_charges` row.
+ */
+export async function createOfficialGame(params: CreateOfficialGameParams): Promise<GameRow> {
+  const env = await getEnv();
+  const id = crypto.randomUUID();
+
+  const baseSlug = slugify(params.name);
+  let slug = baseSlug;
+  let attempt = 0;
+  while (attempt < 5) {
+    const existing = await env.DB.prepare("SELECT id FROM games WHERE slug = ?")
+      .bind(slug)
+      .first();
+    if (!existing) break;
+    attempt++;
+    slug = `${baseSlug}-${crypto.randomUUID().slice(0, 4)}`;
+  }
+
+  const inviteCode = generateInviteCode();
+
+  await env.DB.prepare(
+    `INSERT INTO games
+      (id, name, slug, owner_id, type, league_ids, rules_json, currency, max_players,
+       status, invite_code, visibility)
+     VALUES (?, ?, ?, ?, 'platform_official', ?, ?, 'GBP', ?, 'open', ?, 'public')`,
+  )
+    .bind(
+      id,
+      params.name.trim(),
+      slug,
+      params.ownerId,
+      JSON.stringify(params.leagueIds),
+      JSON.stringify(params.rules),
+      params.maxPlayers,
+      inviteCode,
+    )
+    .run();
+
+  const game = await getGameById(id);
+  if (!game) throw new Error("Failed to create official game");
+  return game;
+}
+
 export async function getGameById(id: string, env?: Env): Promise<GameRow | null> {
   const e = env ?? (await getEnv());
   const row = await e.DB.prepare("SELECT * FROM games WHERE id = ?").bind(id).first<GameRow>();
