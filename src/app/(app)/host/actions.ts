@@ -32,10 +32,14 @@ export async function createGameAction(
   const visibility = String(formData.get("visibility") ?? "invite_only") as
     | "public"
     | "invite_only";
+  const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
 
   if (!name) return { error: "Give your game a name." };
   if (leagueIds.length === 0) return { error: "Select at least one league." };
   if (![0, 1, 2, 3].includes(lives)) return { error: "Lives must be between 0 and 3." };
+  if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
+    return { error: "Start date isn't valid." };
+  }
 
   const maxPlayers = maxPlayersRaw ? parseInt(maxPlayersRaw, 10) : null;
   if (maxPlayersRaw && (!Number.isInteger(maxPlayers) || (maxPlayers as number) < 2)) {
@@ -60,6 +64,7 @@ export async function createGameAction(
     displayEntryFeeCents,
     displayPrizePoolNote: displayPrizePoolNote || null,
     visibility,
+    startsAt: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
   });
 
   const feeConfig = await getActiveAdminFeeConfig();

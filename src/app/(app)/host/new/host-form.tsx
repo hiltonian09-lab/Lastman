@@ -43,6 +43,20 @@ export function HostForm({
         </div>
       </fieldset>
 
+      <label className="flex flex-col gap-1 text-sm">
+        Round 1 start date (optional)
+        <input
+          name="startsAt"
+          type="date"
+          className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
+        />
+        <span className="text-xs text-foreground-muted">
+          Leave blank to use the nearest upcoming fixtures. Set this if the
+          league&rsquo;s season hasn&rsquo;t started yet — round 1 will pick
+          up fixtures from that gameweek instead.
+        </span>
+      </label>
+
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1 text-sm">
           Lives

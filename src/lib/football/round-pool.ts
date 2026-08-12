@@ -23,12 +23,16 @@ export interface PickOption {
  * dashboards) only ever reads whatever the cron already synced, so page
  * traffic can never burst past the 10 req/min free-tier limit.
  */
-export async function getGameweekFixtures(game: GameRow, env?: Env): Promise<FixtureRow[]> {
+export async function getGameweekFixtures(
+  game: GameRow,
+  env?: Env,
+  anchor?: Date,
+): Promise<FixtureRow[]> {
   const e = env ?? (await getEnv());
   const leagueIds: string[] = JSON.parse(game.league_ids);
   if (leagueIds.length === 0) return [];
 
-  const window = getGameweekWindow();
+  const window = getGameweekWindow(anchor);
   const placeholders = leagueIds.map(() => "?").join(",");
 
   const { results } = await e.DB.prepare(
@@ -53,9 +57,10 @@ export async function getAvailablePicks(
   gameEntryId: string,
   env?: Env,
   currentRoundId?: string,
+  anchor?: Date,
 ): Promise<PickOption[]> {
   const [fixtures, usedTeamIds, leagues] = await Promise.all([
-    getGameweekFixtures(game, env),
+    getGameweekFixtures(game, env, anchor),
     getUsedTeamIds(gameEntryId, env, currentRoundId),
     getLeaguesByIds(JSON.parse(game.league_ids), env),
   ]);

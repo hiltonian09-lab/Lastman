@@ -59,6 +59,7 @@ export interface CreateGameParams {
   displayEntryFeeCents: number | null;
   displayPrizePoolNote: string | null;
   visibility: "public" | "invite_only";
+  startsAt: string | null;
 }
 
 export async function createGame(params: CreateGameParams): Promise<GameRow> {
@@ -83,8 +84,8 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
   await env.DB.prepare(
     `INSERT INTO games
       (id, name, slug, owner_id, type, league_ids, rules_json, display_entry_fee_cents,
-       display_prize_pool_note, currency, max_players, status, invite_code, visibility)
-     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?)`,
+       display_prize_pool_note, currency, max_players, status, invite_code, visibility, starts_at)
+     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?, ?)`,
   )
     .bind(
       id,
@@ -98,6 +99,7 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
       params.maxPlayers,
       inviteCode,
       params.visibility,
+      params.startsAt,
     )
     .run();
 
@@ -112,6 +114,7 @@ export interface CreateOfficialGameParams {
   leagueIds: string[];
   maxPlayers: number | null;
   rules: GameRules;
+  startsAt: string | null;
 }
 
 /**
@@ -140,8 +143,8 @@ export async function createOfficialGame(params: CreateOfficialGameParams): Prom
   await env.DB.prepare(
     `INSERT INTO games
       (id, name, slug, owner_id, type, league_ids, rules_json, currency, max_players,
-       status, invite_code, visibility)
-     VALUES (?, ?, ?, ?, 'platform_official', ?, ?, 'GBP', ?, 'open', ?, 'public')`,
+       status, invite_code, visibility, starts_at)
+     VALUES (?, ?, ?, ?, 'platform_official', ?, ?, 'GBP', ?, 'open', ?, 'public', ?)`,
   )
     .bind(
       id,
@@ -152,6 +155,7 @@ export async function createOfficialGame(params: CreateOfficialGameParams): Prom
       JSON.stringify(params.rules),
       params.maxPlayers,
       inviteCode,
+      params.startsAt,
     )
     .run();
 
@@ -233,6 +237,7 @@ export interface UpdateGameSettingsParams {
   displayEntryFeeCents?: number | null;
   displayPrizePoolNote?: string | null;
   visibility?: "public" | "invite_only";
+  startsAt?: string | null;
 }
 
 export async function updateGameSettings(
@@ -249,7 +254,7 @@ export async function updateGameSettings(
   await env.DB.prepare(
     `UPDATE games SET
        league_ids = ?, rules_json = ?, max_players = ?,
-       display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?
+       display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?, starts_at = ?
      WHERE id = ?`,
   )
     .bind(
@@ -263,6 +268,7 @@ export async function updateGameSettings(
         ? params.displayPrizePoolNote
         : game.display_prize_pool_note,
       params.visibility ?? game.visibility,
+      params.startsAt !== undefined ? params.startsAt : game.starts_at,
       gameId,
     )
     .run();

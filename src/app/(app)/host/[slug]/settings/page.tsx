@@ -56,6 +56,7 @@ export default async function GameSettingsPage({
           currentPrizePoolNote={game.display_prize_pool_note ?? ""}
           currentVisibility={game.visibility}
           isOfficial={game.type === "platform_official"}
+          currentStartsAt={game.starts_at ? game.starts_at.slice(0, 10) : ""}
         />
       </div>
     </div>

@@ -70,7 +70,7 @@ export default async function PlayerGamePage({
   const leagueIds: string[] = JSON.parse(game.league_ids);
   const [options, currentPick, entries, messages, fixturesSync, leagues, upcomingFixtures] =
     await Promise.all([
-      getAvailablePicks(game, entry.id, undefined, round.id),
+      getAvailablePicks(game, entry.id, undefined, round.id, new Date(round.deadline_at)),
       getPickForRound(entry.id, round.id),
       listEntriesForGame(game.id),
       listGameMessages(game.id),

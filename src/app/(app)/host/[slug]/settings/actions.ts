@@ -35,9 +35,13 @@ export async function updateSettingsAction(
   const visibility = String(formData.get("visibility") ?? game.visibility) as
     | "public"
     | "invite_only";
+  const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
 
   if (!started && leagueIds.length === 0) {
     return { error: "Select at least one league." };
+  }
+  if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
+    return { error: "Start date isn't valid." };
   }
 
   const maxPlayers = maxPlayersRaw ? parseInt(maxPlayersRaw, 10) : null;
@@ -59,6 +63,11 @@ export async function updateSettingsAction(
     displayEntryFeeCents,
     displayPrizePoolNote: displayPrizePoolNote || null,
     visibility: game.type === "platform_official" ? undefined : visibility,
+    startsAt: started
+      ? undefined
+      : startsAtRaw
+        ? new Date(startsAtRaw).toISOString()
+        : null,
   });
 
   revalidatePath(`/host/${slug}`);

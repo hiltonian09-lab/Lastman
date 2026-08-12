@@ -27,10 +27,48 @@ export async function ensureCurrentRound(game: GameRow, env?: Env): Promise<Roun
     .first<RoundRow>();
 
   if (existing && existing.status !== "resolved") {
+    // Self-heal an upcoming round 1 that's still pointed at an empty
+    // gameweek — e.g. it was created before the owner set a start date, or
+    // before the season's fixtures existed in D1 yet. Nobody can have picked
+    // from an empty pool, so it's safe to re-anchor rather than leaving
+    // players stuck on a dead placeholder deadline forever.
+    if (existing.round_number === 1 && existing.status === "upcoming") {
+      const currentWindowFixtures = await getGameweekFixtures(
+        game,
+        e,
+        new Date(existing.deadline_at),
+      );
+      if (currentWindowFixtures.length === 0) {
+        const healAnchor =
+          game.starts_at && new Date(game.starts_at) > new Date()
+            ? new Date(game.starts_at)
+            : new Date();
+        const freshFixtures = await getGameweekFixtures(game, e, healAnchor);
+        if (freshFixtures.length > 0) {
+          const earliestKickoff = freshFixtures.map((f) => f.kickoff_at).sort()[0];
+          await e.DB.prepare("UPDATE rounds SET deadline_at = ? WHERE id = ?")
+            .bind(earliestKickoff, existing.id)
+            .run();
+          return { ...existing, deadline_at: earliestKickoff };
+        }
+      }
+    }
     return existing;
   }
 
-  const fixtures = await getGameweekFixtures(game, e);
+  // Round 1 anchors to the owner's chosen start date (if set and still
+  // ahead) rather than "today" — otherwise a game targeting a league whose
+  // season hasn't kicked off yet (e.g. created weeks before the Premier
+  // League's opening weekend) would find zero fixtures in the nearest
+  // Fri-Mon window and fall back to a meaningless +7-day placeholder
+  // deadline. Later rounds always anchor to today since the season is
+  // already underway by then.
+  const anchor =
+    !existing && game.starts_at && new Date(game.starts_at) > new Date()
+      ? new Date(game.starts_at)
+      : undefined;
+
+  const fixtures = await getGameweekFixtures(game, e, anchor);
   const earliestKickoff = fixtures.length
     ? fixtures.map((f) => f.kickoff_at).sort()[0]
     : new Date(Date.now() + 7 * 86_400_000).toISOString();
