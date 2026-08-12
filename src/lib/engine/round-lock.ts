@@ -32,7 +32,7 @@ export async function lockRoundAndAutoAssign(env: Env, round: RoundRow): Promise
     }
 
     // lowest_alphabetical: auto-assign the first available team, sorted alphabetically
-    const options = await getAvailablePicks(game, entry.id, env);
+    const options = await getAvailablePicks(game, entry.id, env, round.id);
     if (options.length === 0) {
       // Exhausted every team playing this gameweek — rare edge case, treat as a setback
       await applySetback(env, entry, round.id);

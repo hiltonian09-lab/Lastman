@@ -52,10 +52,11 @@ export async function getAvailablePicks(
   game: GameRow,
   gameEntryId: string,
   env?: Env,
+  currentRoundId?: string,
 ): Promise<PickOption[]> {
   const [fixtures, usedTeamIds, leagues] = await Promise.all([
     getGameweekFixtures(game, env),
-    getUsedTeamIds(gameEntryId, env),
+    getUsedTeamIds(gameEntryId, env, currentRoundId),
     getLeaguesByIds(JSON.parse(game.league_ids), env),
   ]);
 

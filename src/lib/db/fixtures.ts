@@ -81,12 +81,22 @@ export async function runBatchedStatements(
   }
 }
 
-export async function getUsedTeamIds(gameEntryId: string, env?: Env): Promise<Set<string>> {
+/**
+ * Teams "used up" by an entry — excluded from their future pick pool.
+ * excludeRoundId lets a player's own pending pick for the round they're
+ * currently viewing stay selectable (so they can see and change it before
+ * the deadline) without it also blocking every other round.
+ */
+export async function getUsedTeamIds(
+  gameEntryId: string,
+  env?: Env,
+  excludeRoundId?: string,
+): Promise<Set<string>> {
   const e = env ?? (await getEnv());
   const { results } = await e.DB.prepare(
-    `SELECT team_id FROM picks WHERE game_entry_id = ? AND result != 'void'`,
+    `SELECT team_id FROM picks WHERE game_entry_id = ? AND result != 'void' AND round_id != ?`,
   )
-    .bind(gameEntryId)
+    .bind(gameEntryId, excludeRoundId ?? "")
     .all<{ team_id: string }>();
   return new Set(results.map((r) => r.team_id));
 }

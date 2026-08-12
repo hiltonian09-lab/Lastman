@@ -8,9 +8,7 @@ const initialState: PickFormState = {};
 
 function formatKickoff(iso: string): string {
   // Explicit timeZone so this renders identically on the server (SSR) and the
-  // client (hydration) regardless of the visitor's local timezone — without
-  // it, toLocaleString can disagree between the two and React throws a
-  // hydration mismatch (error #418).
+  // client (hydration) regardless of the visitor's local timezone.
   return new Date(iso).toLocaleString("en-GB", {
     weekday: "short",
     day: "numeric",
@@ -32,7 +30,9 @@ export function PickForm({
 }) {
   const action = submitPickAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
-  const [selected, setSelected] = useState<PickOption | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState(currentPickTeamId ?? "");
+
+  const selectedOption = options.find((o) => o.teamId === selectedTeamId) ?? null;
 
   const fixtureGroups = new Map<string, PickOption[]>();
   for (const opt of options) {
@@ -41,6 +41,7 @@ export function PickForm({
     fixtureGroups.set(opt.fixtureId, group);
   }
   const groups = Array.from(fixtureGroups.entries());
+  const sortedByName = [...options].sort((a, b) => a.teamName.localeCompare(b.teamName));
   const next = options[0];
 
   return (
@@ -56,47 +57,31 @@ export function PickForm({
         </div>
       )}
 
-      <form action={formAction} className="flex flex-col gap-3">
-        <input type="hidden" name="fixtureId" value={selected?.fixtureId ?? ""} />
-        <input type="hidden" name="teamId" value={selected?.teamId ?? ""} />
+      <form action={formAction} className="flex flex-col gap-4">
+        <input type="hidden" name="fixtureId" value={selectedOption?.fixtureId ?? ""} />
+        <input type="hidden" name="teamId" value={selectedTeamId} />
 
-        {groups.map(([fixtureId, group]) => {
-          const [a, b] = group.length === 2 ? group : [group[0], null];
-          return (
-            <div
-              key={fixtureId}
-              className="glass-card flex items-center justify-between gap-4 p-4"
+        {options.length > 0 && (
+          <label className="flex flex-col gap-1 text-sm">
+            Pick your team
+            <select
+              value={selectedTeamId}
+              onChange={(e) => setSelectedTeamId(e.target.value)}
+              className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
             >
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
-                {[a, b].filter(Boolean).map((opt) => {
-                  const o = opt as PickOption;
-                  const isCurrent = currentPickTeamId === o.teamId;
-                  const isSelected = selected?.teamId === o.teamId;
-                  return (
-                    <button
-                      key={o.teamId}
-                      type="button"
-                      onClick={() => setSelected(o)}
-                      className={`flex-1 rounded-lg border px-4 py-2 text-left text-sm transition-colors ${
-                        isSelected || isCurrent
-                          ? "border-royal-blue bg-royal-blue/10"
-                          : "border-border-glass hover:bg-surface-glass"
-                      }`}
-                    >
-                      <span className="font-medium">{o.teamName}</span>
-                      <span className="block text-xs text-foreground-muted">
-                        {o.isHome ? "Home" : "Away"} vs {o.opponentName}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="whitespace-nowrap text-xs text-foreground-muted">
-                {formatKickoff(group[0].kickoffAt)}
-              </span>
-            </div>
-          );
-        })}
+              {/* Not disabled on purpose: a disabled option that doesn't match the
+                  controlled value makes some browsers silently show the first real
+                  team as "selected" without firing onChange, which was letting a
+                  pick submit with a team the player never actually chose. */}
+              <option value="">Choose a team…</option>
+              {sortedByName.map((o) => (
+                <option key={o.teamId} value={o.teamId} className="bg-background">
+                  {o.teamName} ({o.isHome ? "Home" : "Away"} vs {o.opponentName})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {options.length === 0 && (
           <p className="text-sm text-foreground-muted">
@@ -109,11 +94,47 @@ export function PickForm({
 
         <button
           type="submit"
-          disabled={pending || !selected}
-          className="mt-2 self-start rounded-full bg-royal-blue px-6 py-3 font-medium text-white transition-colors hover:bg-royal-blue-deep disabled:opacity-50"
+          disabled={pending || !selectedTeamId}
+          className="self-start rounded-full bg-royal-blue px-6 py-3 font-medium text-white transition-colors hover:bg-royal-blue-deep disabled:opacity-50"
         >
           {pending ? "Saving…" : "Confirm pick"}
         </button>
+
+        {groups.length > 0 && (
+          <div className="mt-2 flex flex-col gap-3">
+            {groups.map(([fixtureId, group]) => {
+              const [a, b] = group.length === 2 ? group : [group[0], null];
+              const isHighlighted = selectedOption?.fixtureId === fixtureId;
+              return (
+                <div
+                  key={fixtureId}
+                  className={`glass-card flex items-center justify-between gap-4 p-4 transition-colors ${
+                    isHighlighted ? "border-gold bg-gold/5" : ""
+                  }`}
+                >
+                  <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+                    {[a, b].filter(Boolean).map((opt, i) => {
+                      const o = opt as PickOption;
+                      const isThisTeamSelected = selectedTeamId === o.teamId;
+                      return (
+                        <span
+                          key={o.teamId}
+                          className={`text-sm ${isThisTeamSelected ? "font-semibold text-gold" : ""}`}
+                        >
+                          {i === 1 && <span className="mx-1 text-foreground-muted">vs</span>}
+                          {o.teamName}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className="whitespace-nowrap text-xs text-foreground-muted">
+                    {formatKickoff(group[0].kickoffAt)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </form>
     </div>
   );

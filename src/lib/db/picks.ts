@@ -41,10 +41,13 @@ export async function submitPick(params: {
 
   const env = await getEnv();
 
+  // Excludes this round's own pick — re-confirming (or switching back to) the
+  // team you already picked for THIS round isn't "reusing" it, only picking
+  // it in an earlier round is.
   const alreadyUsed = await env.DB.prepare(
-    `SELECT id FROM picks WHERE game_entry_id = ? AND team_id = ? AND result != 'void'`,
+    `SELECT id FROM picks WHERE game_entry_id = ? AND team_id = ? AND result != 'void' AND round_id != ?`,
   )
-    .bind(params.gameEntryId, params.teamId)
+    .bind(params.gameEntryId, params.teamId, params.roundId)
     .first();
   if (alreadyUsed) {
     return { ok: false, error: "You've already picked this team in this game." };
