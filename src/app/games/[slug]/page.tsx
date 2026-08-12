@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug } from "@/lib/db/games";
 import { getGameEntry, getPickForRound } from "@/lib/db/picks";
@@ -8,6 +9,7 @@ import { listEntriesForGame } from "@/lib/db/game-entries";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { formatRelativeTime } from "@/lib/format/relative-time";
+import { PrizeFundCard } from "@/components/prize-fund-card";
 import { PickForm } from "./pick-form";
 
 export default async function PlayerGamePage({
@@ -50,6 +52,12 @@ export default async function PlayerGamePage({
         <p className="mt-2 text-sm text-foreground-muted">
           Better luck in the next one — you can still follow the standings.
         </p>
+        <Link
+          href={`/games/${slug}/players/${entry.id}`}
+          className="mt-6 rounded-full border border-border-glass px-6 py-3 text-sm hover:bg-surface-glass"
+        >
+          View your pick history
+        </Link>
       </div>
     );
   }
@@ -84,6 +92,13 @@ export default async function PlayerGamePage({
         </div>
       )}
 
+      <div className="mt-6">
+        <PrizeFundCard
+          entryFeeCents={game.display_entry_fee_cents}
+          prizePoolNote={game.display_prize_pool_note}
+        />
+      </div>
+
       <div className="mt-8">
         <PickForm
           slug={slug}
@@ -103,9 +118,10 @@ export default async function PlayerGamePage({
         </h2>
         <div className="mt-3 flex flex-col gap-2">
           {entries.map((e) => (
-            <div
+            <Link
               key={e.id}
-              className="glass-card flex items-center justify-between px-4 py-3 text-sm"
+              href={`/games/${slug}/players/${e.id}`}
+              className="glass-card flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-glass"
             >
               <span>{e.name}</span>
               <span
@@ -115,7 +131,7 @@ export default async function PlayerGamePage({
               >
                 {e.status}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

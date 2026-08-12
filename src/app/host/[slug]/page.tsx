@@ -6,8 +6,10 @@ import { listEntriesForGame } from "@/lib/db/game-entries";
 import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
+import { getRoundsWithStats, getEntriesWithoutPickForRound } from "@/lib/db/round-stats";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { getOrigin } from "@/lib/http/origin";
+import { PrizeFundCard } from "@/components/prize-fund-card";
 import { BroadcastForm } from "./broadcast-form";
 import { InviteLink } from "./invite-link";
 
@@ -26,15 +28,20 @@ export default async function GameDashboardPage({
   if (!isOwnerOrPlatformOwner) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
-  const [entries, adminFee, messages, fixturesSync, origin] = await Promise.all([
+  const [entries, adminFee, messages, fixturesSync, origin, rounds] = await Promise.all([
     listEntriesForGame(game.id),
     getAdminFeeChargeByGameId(game.id),
     listGameMessages(game.id),
     getSyncStatus("live_scores"),
     getOrigin(),
+    getRoundsWithStats(game.id),
   ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
+  const currentRound = rounds.find((r) => r.status !== "resolved");
+  const missingPicks = currentRound
+    ? await getEntriesWithoutPickForRound(game.id, currentRound.id)
+    : [];
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
@@ -70,8 +77,12 @@ export default async function GameDashboardPage({
         </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-4">
         <InviteLink code={game.invite_code ?? ""} origin={origin} />
+        <PrizeFundCard
+          entryFeeCents={game.display_entry_fee_cents}
+          prizePoolNote={game.display_prize_pool_note}
+        />
       </div>
 
       {adminFee && (
@@ -90,6 +101,17 @@ export default async function GameDashboardPage({
         </div>
       )}
 
+      {currentRound && missingPicks.length > 0 && (
+        <div className="glass-card mt-6 p-4 text-sm">
+          <p className="font-medium text-status-pending">
+            Still to pick for round {currentRound.round_number}
+          </p>
+          <p className="mt-1 text-foreground-muted">
+            {missingPicks.map((p) => p.name).join(", ")}
+          </p>
+        </div>
+      )}
+
       <section className="mt-8">
         <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
           Entrants
@@ -101,9 +123,10 @@ export default async function GameDashboardPage({
             </p>
           )}
           {entries.map((e) => (
-            <div
+            <Link
               key={e.id}
-              className="glass-card flex items-center justify-between px-4 py-3 text-sm"
+              href={`/games/${slug}/players/${e.id}`}
+              className="glass-card flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-glass"
             >
               <span>{e.name}</span>
               <span
@@ -113,10 +136,35 @@ export default async function GameDashboardPage({
               >
                 {e.status}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
+
+      {rounds.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            Round history
+          </h2>
+          <div className="mt-3 flex flex-col gap-2">
+            {rounds.map((r) => (
+              <div
+                key={r.id}
+                className="glass-card flex items-center justify-between px-4 py-3 text-sm"
+              >
+                <span>Round {r.round_number}</span>
+                <span className="text-foreground-muted">
+                  {r.status === "resolved"
+                    ? `${r.wins} survived · ${r.setbacks} out`
+                    : r.status === "locked"
+                      ? `${r.pending} awaiting results`
+                      : "upcoming"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
