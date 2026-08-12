@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listGamesForUser } from "@/lib/db/game-entries";
 import { listGamesOwnedBy } from "@/lib/db/games";
+import { getPlayerStats } from "@/lib/db/stats";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -12,6 +13,13 @@ export default async function DashboardPage() {
     listGamesForUser(user.id),
     listGamesOwnedBy(user.id),
   ]);
+
+  const playingWithStats = await Promise.all(
+    playing.map(async (game) => ({
+      game,
+      stats: await getPlayerStats(game.entry_id),
+    })),
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
@@ -44,14 +52,22 @@ export default async function DashboardPage() {
           </p>
         ) : (
           <div className="mt-3 flex flex-col gap-2">
-            {playing.map((g) => (
+            {playingWithStats.map(({ game, stats }) => (
               <Link
-                key={g.id}
-                href={`/games/${g.slug}`}
-                className="glass-card flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-glass"
+                key={game.id}
+                href={`/games/${game.slug}`}
+                className="glass-card flex flex-col gap-1 px-4 py-3 text-sm hover:bg-surface-glass"
               >
-                <span>{g.name}</span>
-                <span className="text-foreground-muted">{g.status}</span>
+                <div className="flex items-center justify-between">
+                  <span>{game.name}</span>
+                  <span className="text-foreground-muted">{game.entry_status}</span>
+                </div>
+                {stats && (
+                  <p className="text-xs text-foreground-muted">
+                    {stats.roundsSurvived} rounds survived · {stats.picksUsed} picks used
+                    {stats.currentStreak > 0 && ` · ${stats.currentStreak} win streak`}
+                  </p>
+                )}
               </Link>
             ))}
           </div>

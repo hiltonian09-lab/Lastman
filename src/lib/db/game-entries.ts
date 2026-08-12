@@ -63,6 +63,8 @@ export async function isUserInGame(userId: string, gameId: string): Promise<bool
 }
 
 export interface GameWithEntryCount extends GameRow {
+  entry_id: string;
+  entry_status: "active" | "eliminated" | "winner";
   entry_count: number;
 }
 
@@ -94,7 +96,10 @@ export async function listEntriesForGame(gameId: string): Promise<EntryWithUser[
 export async function listGamesForUser(userId: string): Promise<GameWithEntryCount[]> {
   const env = await getEnv();
   const { results } = await env.DB.prepare(
-    `SELECT games.*, (SELECT COUNT(*) FROM game_entries ge2 WHERE ge2.game_id = games.id) as entry_count
+    `SELECT games.*,
+            game_entries.id as entry_id,
+            game_entries.status as entry_status,
+            (SELECT COUNT(*) FROM game_entries ge2 WHERE ge2.game_id = games.id) as entry_count
      FROM games
      JOIN game_entries ON game_entries.game_id = games.id
      WHERE game_entries.user_id = ?

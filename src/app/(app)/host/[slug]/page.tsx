@@ -7,7 +7,7 @@ import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { getRoundsWithStats, getEntriesWithoutPickForRound } from "@/lib/db/round-stats";
-import { getGameTrend } from "@/lib/db/stats";
+import { getGameTrend, getGameSurvivalStats } from "@/lib/db/stats";
 import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { formatRelativeTime } from "@/lib/format/relative-time";
@@ -32,7 +32,7 @@ export default async function GameDashboardPage({
   if (!isOwnerOrPlatformOwner) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
-  const [entries, adminFee, messages, fixturesSync, origin, rounds, trend] = await Promise.all([
+  const [entries, adminFee, messages, fixturesSync, origin, rounds, trend, survival] = await Promise.all([
     listEntriesForGame(game.id),
     getAdminFeeChargeByGameId(game.id),
     listGameMessages(game.id),
@@ -40,6 +40,7 @@ export default async function GameDashboardPage({
     getOrigin(),
     getRoundsWithStats(game.id),
     getGameTrend(game.id),
+    getGameSurvivalStats(game.id),
   ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
@@ -122,6 +123,40 @@ export default async function GameDashboardPage({
             {missingPicks.map((p) => p.name).join(", ")}
           </p>
         </div>
+      )}
+
+      {entries.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            League-wide stats
+          </h2>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {survival.totalEntries}
+              </p>
+              <p className="text-xs text-foreground-muted">Total entrants</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {survival.activeOrWinner}
+              </p>
+              <p className="text-xs text-foreground-muted">Still in</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {survival.eliminated}
+              </p>
+              <p className="text-xs text-foreground-muted">Eliminated</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {survival.averageSurvivalLength.toFixed(1)}
+              </p>
+              <p className="text-xs text-foreground-muted">Avg. rounds survived</p>
+            </div>
+          </div>
+        </section>
       )}
 
       <section className="mt-8">

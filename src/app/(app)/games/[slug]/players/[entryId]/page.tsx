@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug } from "@/lib/db/games";
 import { isUserInGame } from "@/lib/db/game-entries";
 import { getEntryDetail, getPickHistoryForEntry } from "@/lib/db/round-stats";
+import { getPlayerStats } from "@/lib/db/stats";
 
 function formatKickoff(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -46,7 +47,10 @@ export default async function PlayerHistoryPage({
   const canView = isMember || game.owner_id === user.id || user.role === "platform_owner";
   if (!canView) redirect(`/games/${slug}`);
 
-  const history = await getPickHistoryForEntry(entryId);
+  const [history, stats] = await Promise.all([
+    getPickHistoryForEntry(entryId),
+    getPlayerStats(entryId),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-6 py-16">
@@ -81,6 +85,40 @@ export default async function PlayerHistoryPage({
           timeZone: "Europe/London",
         })}
       </p>
+
+      {stats && (
+        <section className="mt-8">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            Your stats
+          </h2>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {stats.roundsSurvived}
+              </p>
+              <p className="text-xs text-foreground-muted">Rounds survived</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {stats.picksUsed}
+              </p>
+              <p className="text-xs text-foreground-muted">Picks used</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {stats.currentStreak}
+              </p>
+              <p className="text-xs text-foreground-muted">Win streak</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="font-[family-name:var(--font-heading)] text-lg font-medium">
+                {stats.wins}-{stats.losses}-{stats.draws}
+              </p>
+              <p className="text-xs text-foreground-muted">W-L-D</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">

@@ -1,6 +1,7 @@
 import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 import type { RoundRow } from "./rounds";
+import type { PickRow } from "./picks";
 
 export interface GameStatsSnapshotRow {
   id: string;
@@ -110,4 +111,138 @@ export async function getGameTrend(
     .bind(gameId)
     .all<RoundTrendPoint>();
   return results;
+}
+
+export interface PlayerStats {
+  roundsSurvived: number;
+  picksUsed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  voids: number;
+  currentStreak: number;
+  bestStreak: number;
+  livesRemaining: number;
+  status: "active" | "eliminated" | "winner";
+}
+
+export async function getPlayerStats(
+  entryId: string,
+  env?: Env,
+): Promise<PlayerStats | null> {
+  const e = env ?? (await getEnv());
+
+  const entry = await e.DB.prepare(
+    `SELECT game_entries.status, game_entries.lives_remaining,
+            game_entries.eliminated_at_round_id, rounds.round_number as eliminated_round_number
+     FROM game_entries
+     LEFT JOIN rounds ON rounds.id = game_entries.eliminated_at_round_id
+     WHERE game_entries.id = ?`,
+  )
+    .bind(entryId)
+    .first<{
+      status: "active" | "eliminated" | "winner";
+      lives_remaining: number;
+      eliminated_at_round_id: string | null;
+      eliminated_round_number: number | null;
+    }>();
+  if (!entry) return null;
+
+  const { results } = await e.DB.prepare(
+    `SELECT rounds.round_number, picks.result
+     FROM picks
+     JOIN rounds ON rounds.id = picks.round_id
+     WHERE picks.game_entry_id = ? AND rounds.status = 'resolved'
+     ORDER BY rounds.round_number ASC`,
+  )
+    .bind(entryId)
+    .all<{ round_number: number; result: PickRow["result"] }>();
+
+  const wins = results.filter((r) => r.result === "win").length;
+  const losses = results.filter((r) => r.result === "loss").length;
+  const draws = results.filter((r) => r.result === "draw").length;
+  const voids = results.filter((r) => r.result === "void").length;
+  const picksUsed = results.filter((r) => r.result !== "void").length;
+
+  let currentStreak = 0;
+  let bestStreak = 0;
+  let running = 0;
+  for (const r of results) {
+    if (r.result === "win") {
+      running += 1;
+      bestStreak = Math.max(bestStreak, running);
+    } else {
+      running = 0;
+    }
+  }
+  currentStreak = running;
+
+  const roundsSurvived =
+    entry.status === "eliminated"
+      ? Math.max(0, (entry.eliminated_round_number ?? 1) - 1)
+      : results.length;
+
+  return {
+    roundsSurvived,
+    picksUsed,
+    wins,
+    losses,
+    draws,
+    voids,
+    currentStreak,
+    bestStreak,
+    livesRemaining: entry.lives_remaining,
+    status: entry.status,
+  };
+}
+
+export interface GameSurvivalStats {
+  totalEntries: number;
+  activeOrWinner: number;
+  eliminated: number;
+  averageSurvivalLength: number;
+}
+
+export async function getGameSurvivalStats(
+  gameId: string,
+  env?: Env,
+): Promise<GameSurvivalStats> {
+  const e = env ?? (await getEnv());
+
+  const { results } = await e.DB.prepare(
+    `SELECT game_entries.status, game_entries.eliminated_at_round_id,
+            rounds.round_number as eliminated_round_number
+     FROM game_entries
+     LEFT JOIN rounds ON rounds.id = game_entries.eliminated_at_round_id
+     WHERE game_entries.game_id = ?`,
+  )
+    .bind(gameId)
+    .all<{
+      status: "active" | "eliminated" | "winner";
+      eliminated_at_round_id: string | null;
+      eliminated_round_number: number | null;
+    }>();
+
+  let totalRoundsSurvived = 0;
+  let activeOrWinner = 0;
+  let eliminated = 0;
+  for (const r of results) {
+    if (r.status === "eliminated") {
+      eliminated += 1;
+      totalRoundsSurvived += Math.max(0, (r.eliminated_round_number ?? 1) - 1);
+    } else {
+      activeOrWinner += 1;
+    }
+  }
+
+  const totalEntries = results.length;
+  const averageSurvivalLength =
+    totalEntries > 0 ? totalRoundsSurvived / totalEntries : 0;
+
+  return {
+    totalEntries,
+    activeOrWinner,
+    eliminated,
+    averageSurvivalLength,
+  };
 }
