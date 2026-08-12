@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 
 export interface GameRules {
@@ -107,9 +106,9 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
   return game;
 }
 
-export async function getGameById(id: string): Promise<GameRow | null> {
-  const env = await getEnv();
-  const row = await env.DB.prepare("SELECT * FROM games WHERE id = ?").bind(id).first<GameRow>();
+export async function getGameById(id: string, env?: Env): Promise<GameRow | null> {
+  const e = env ?? (await getEnv());
+  const row = await e.DB.prepare("SELECT * FROM games WHERE id = ?").bind(id).first<GameRow>();
   return row ?? null;
 }
 
@@ -146,4 +145,32 @@ export async function listPublicOpenGames(): Promise<GameRow[]> {
      ORDER BY created_at DESC LIMIT 50`,
   ).all<GameRow>();
   return results;
+}
+
+export async function listGamesWithStatus(
+  statuses: GameRow["status"][],
+  env?: Env,
+): Promise<GameRow[]> {
+  const e = env ?? (await getEnv());
+  const placeholders = statuses.map(() => "?").join(",");
+  const { results } = await e.DB.prepare(
+    `SELECT * FROM games WHERE status IN (${placeholders})`,
+  )
+    .bind(...statuses)
+    .all<GameRow>();
+  return results;
+}
+
+export async function setGameStatus(
+  gameId: string,
+  status: GameRow["status"],
+  blockedReason: string | null,
+  env?: Env,
+): Promise<void> {
+  const e = env ?? (await getEnv());
+  await e.DB.prepare(
+    `UPDATE games SET status = ?, blocked_reason = ?, blocked_at = CASE WHEN ? = 'blocked' THEN datetime('now') ELSE blocked_at END WHERE id = ?`,
+  )
+    .bind(status, blockedReason, status, gameId)
+    .run();
 }

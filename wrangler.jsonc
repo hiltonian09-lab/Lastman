@@ -3,7 +3,7 @@
   "name": "the-gauntlet",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
-  "main": ".open-next/worker.js",
+  "main": "custom-worker.ts",
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

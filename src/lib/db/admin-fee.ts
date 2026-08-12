@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 
 export interface AdminFeeConfig {
@@ -7,9 +6,9 @@ export interface AdminFeeConfig {
   currency: string;
 }
 
-export async function getActiveAdminFeeConfig(): Promise<AdminFeeConfig> {
-  const env = await getEnv();
-  const row = await env.DB.prepare(
+export async function getActiveAdminFeeConfig(env?: Env): Promise<AdminFeeConfig> {
+  const e = env ?? (await getEnv());
+  const row = await e.DB.prepare(
     `SELECT minimum_fee_cents, per_player_fee_cents, currency
      FROM admin_fee_config ORDER BY effective_from DESC LIMIT 1`,
   ).first<AdminFeeConfig>();
@@ -50,9 +49,10 @@ export async function createPendingAdminFeeCharge(params: {
 
 export async function getAdminFeeChargeByGameId(
   gameId: string,
+  env?: Env,
 ): Promise<AdminFeeChargeRow | null> {
-  const env = await getEnv();
-  const row = await env.DB.prepare("SELECT * FROM admin_fee_charges WHERE game_id = ?")
+  const e = env ?? (await getEnv());
+  const row = await e.DB.prepare("SELECT * FROM admin_fee_charges WHERE game_id = ?")
     .bind(gameId)
     .first<AdminFeeChargeRow>();
   return row ?? null;
@@ -76,4 +76,32 @@ export async function markMinimumFeePaid(params: {
       `UPDATE games SET status = 'open' WHERE id = ? AND status = 'draft'`,
     ).bind(params.gameId),
   ]);
+}
+
+/** Cron-only: records the computed balance and its outcome once round 1 locks. */
+export async function recordBalanceOutcome(
+  params: {
+    gameId: string;
+    playerCountAtLock: number;
+    balanceCents: number;
+    status: "paid" | "failed";
+    paymentIntentId: string | null;
+  },
+  env?: Env,
+): Promise<void> {
+  const e = env ?? (await getEnv());
+  await e.DB.prepare(
+    `UPDATE admin_fee_charges
+     SET player_count_at_lock = ?, balance_cents = ?, balance_status = ?,
+         balance_payment_intent_id = ?, balance_charged_at = datetime('now')
+     WHERE game_id = ?`,
+  )
+    .bind(
+      params.playerCountAtLock,
+      params.balanceCents,
+      params.status,
+      params.paymentIntentId,
+      params.gameId,
+    )
+    .run();
 }

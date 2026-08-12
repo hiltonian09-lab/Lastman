@@ -8,15 +8,16 @@ const DEFAULT_TTL_SECONDS = 60 * 15;
 async function cachedFetch<T>(
   path: string,
   ttlSeconds = DEFAULT_TTL_SECONDS,
+  env?: Env,
 ): Promise<T> {
-  const env = await getEnv();
+  const e = env ?? (await getEnv());
   const cacheKey = `football-data:${path}`;
 
-  const cached = await env.CACHE.get(cacheKey, "json");
+  const cached = await e.CACHE.get(cacheKey, "json");
   if (cached) return cached as T;
 
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "X-Auth-Token": env.FOOTBALL_DATA_API_TOKEN },
+    headers: { "X-Auth-Token": e.FOOTBALL_DATA_API_TOKEN },
   });
 
   if (!res.ok) {
@@ -24,7 +25,7 @@ async function cachedFetch<T>(
   }
 
   const data = (await res.json()) as T;
-  await env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: ttlSeconds });
+  await e.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: ttlSeconds });
   return data;
 }
 
@@ -57,10 +58,11 @@ interface FdTeamsResponse {
 }
 
 /** competitionCode = football-data.org code, e.g. "PL", "ELC", "PD" */
-export function getTeams(competitionCode: string) {
+export function getTeams(competitionCode: string, env?: Env) {
   return cachedFetch<FdTeamsResponse>(
     `/competitions/${competitionCode}/teams`,
     60 * 60 * 24, // squads barely change day to day
+    env,
   ).then((r) => r.teams);
 }
 
@@ -68,16 +70,19 @@ export function getMatchesInRange(
   competitionCode: string,
   dateFrom: string,
   dateTo: string,
+  env?: Env,
 ) {
   return cachedFetch<FdMatchesResponse>(
     `/competitions/${competitionCode}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`,
     60 * 10,
+    env,
   ).then((r) => r.matches);
 }
 
-export function getMatchesByMatchday(competitionCode: string, matchday: number) {
+export function getMatchesByMatchday(competitionCode: string, matchday: number, env?: Env) {
   return cachedFetch<FdMatchesResponse>(
     `/competitions/${competitionCode}/matches?matchday=${matchday}`,
     60 * 10,
+    env,
   ).then((r) => r.matches);
 }

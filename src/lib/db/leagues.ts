@@ -1,4 +1,6 @@
-import "server-only";
+// Note: no `import "server-only"` here — this module is shared with the
+// cron worker entry, which wrangler bundles directly (not through Next.js's
+// bundler, which is the only place the `server-only` alias resolves).
 import { getEnv } from "@/lib/cloudflare";
 
 export interface LeagueRow {
@@ -16,11 +18,11 @@ export async function listLeagues(): Promise<LeagueRow[]> {
   return results;
 }
 
-export async function getLeaguesByIds(ids: string[]): Promise<LeagueRow[]> {
+export async function getLeaguesByIds(ids: string[], env?: Env): Promise<LeagueRow[]> {
   if (ids.length === 0) return [];
-  const env = await getEnv();
+  const e = env ?? (await getEnv());
   const placeholders = ids.map(() => "?").join(",");
-  const { results } = await env.DB.prepare(
+  const { results } = await e.DB.prepare(
     `SELECT id, name, country, provider_id FROM leagues WHERE id IN (${placeholders})`,
   )
     .bind(...ids)

@@ -1,4 +1,3 @@
-import "server-only";
 import { getMatchesInRange } from "./football-data-client";
 import { getGameweekWindow, toDateOnly } from "./gameweek";
 import { getLeaguesByIds } from "@/lib/db/leagues";
@@ -21,9 +20,9 @@ export interface PickOption {
  * to D1 (so picks/rounds can reference stable fixture rows and results can be
  * resolved later), and returns the raw fixture rows.
  */
-export async function syncGameweekFixtures(game: GameRow): Promise<FixtureRow[]> {
+export async function syncGameweekFixtures(game: GameRow, env?: Env): Promise<FixtureRow[]> {
   const leagueIds: string[] = JSON.parse(game.league_ids);
-  const leagues = await getLeaguesByIds(leagueIds);
+  const leagues = await getLeaguesByIds(leagueIds, env);
   const window = getGameweekWindow();
   const from = toDateOnly(window.from);
   const to = toDateOnly(window.to);
@@ -31,27 +30,30 @@ export async function syncGameweekFixtures(game: GameRow): Promise<FixtureRow[]>
   const fixtures: FixtureRow[] = [];
 
   for (const league of leagues) {
-    const matches = await getMatchesInRange(league.provider_id, from, to);
+    const matches = await getMatchesInRange(league.provider_id, from, to, env);
     const providerTeamIds = Array.from(
       new Set(matches.flatMap((m) => [String(m.homeTeam.id), String(m.awayTeam.id)])),
     );
-    const teamMap = await getTeamsByProviderIds(providerTeamIds);
+    const teamMap = await getTeamsByProviderIds(providerTeamIds, env);
 
     for (const match of matches) {
       const home = teamMap.get(String(match.homeTeam.id));
       const away = teamMap.get(String(match.awayTeam.id));
       if (!home || !away) continue; // team not in our synced set (shouldn't happen for supported leagues)
 
-      const id = await upsertFixture({
-        externalId: String(match.id),
-        leagueId: league.id,
-        homeTeamId: home.id,
-        awayTeamId: away.id,
-        kickoffAt: match.utcDate,
-        status: mapMatchStatus(match.status),
-        homeScore: match.score.fullTime.home,
-        awayScore: match.score.fullTime.away,
-      });
+      const id = await upsertFixture(
+        {
+          externalId: String(match.id),
+          leagueId: league.id,
+          homeTeamId: home.id,
+          awayTeamId: away.id,
+          kickoffAt: match.utcDate,
+          status: mapMatchStatus(match.status),
+          homeScore: match.score.fullTime.home,
+          awayScore: match.score.fullTime.away,
+        },
+        env,
+      );
 
       fixtures.push({
         id,
@@ -78,18 +80,19 @@ export async function syncGameweekFixtures(game: GameRow): Promise<FixtureRow[]>
 export async function getAvailablePicks(
   game: GameRow,
   gameEntryId: string,
+  env?: Env,
 ): Promise<PickOption[]> {
   const [fixtures, usedTeamIds, leagues] = await Promise.all([
-    syncGameweekFixtures(game),
-    getUsedTeamIds(gameEntryId),
-    getLeaguesByIds(JSON.parse(game.league_ids)),
+    syncGameweekFixtures(game, env),
+    getUsedTeamIds(gameEntryId, env),
+    getLeaguesByIds(JSON.parse(game.league_ids), env),
   ]);
 
   const leagueNameById = new Map(leagues.map((l) => [l.id, l.name]));
   const teamIds = Array.from(
     new Set(fixtures.flatMap((f) => [f.home_team_id, f.away_team_id])),
   );
-  const teamsById = await getTeamsByIds(teamIds);
+  const teamsById = await getTeamsByIds(teamIds, env);
 
   const options: PickOption[] = [];
 

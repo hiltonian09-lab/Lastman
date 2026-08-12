@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 
 export interface FixtureRow {
@@ -28,24 +27,27 @@ export function mapMatchStatus(fdStatus: string): FixtureRow["status"] {
   return STATUS_MAP[fdStatus] ?? "scheduled";
 }
 
-export async function upsertFixture(params: {
-  externalId: string;
-  leagueId: string;
-  homeTeamId: string;
-  awayTeamId: string;
-  kickoffAt: string;
-  status: FixtureRow["status"];
-  homeScore: number | null;
-  awayScore: number | null;
-}): Promise<string> {
-  const env = await getEnv();
-  const existing = await env.DB.prepare("SELECT id FROM fixtures WHERE external_id = ?")
+export async function upsertFixture(
+  params: {
+    externalId: string;
+    leagueId: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    kickoffAt: string;
+    status: FixtureRow["status"];
+    homeScore: number | null;
+    awayScore: number | null;
+  },
+  env?: Env,
+): Promise<string> {
+  const e = env ?? (await getEnv());
+  const existing = await e.DB.prepare("SELECT id FROM fixtures WHERE external_id = ?")
     .bind(params.externalId)
     .first<{ id: string }>();
 
   const id = existing?.id ?? crypto.randomUUID();
 
-  await env.DB.prepare(
+  await e.DB.prepare(
     `INSERT INTO fixtures (id, external_id, league_id, home_team_id, away_team_id, kickoff_at, status, home_score, away_score, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT (external_id) DO UPDATE SET
@@ -69,9 +71,9 @@ export async function upsertFixture(params: {
   return id;
 }
 
-export async function getUsedTeamIds(gameEntryId: string): Promise<Set<string>> {
-  const env = await getEnv();
-  const { results } = await env.DB.prepare(
+export async function getUsedTeamIds(gameEntryId: string, env?: Env): Promise<Set<string>> {
+  const e = env ?? (await getEnv());
+  const { results } = await e.DB.prepare(
     `SELECT team_id FROM picks WHERE game_entry_id = ? AND result != 'void'`,
   )
     .bind(gameEntryId)

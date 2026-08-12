@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 
 export interface TeamRow {
@@ -10,11 +9,14 @@ export interface TeamRow {
   provider_id: string;
 }
 
-export async function getTeamsByProviderIds(providerIds: string[]): Promise<Map<string, TeamRow>> {
+export async function getTeamsByProviderIds(
+  providerIds: string[],
+  env?: Env,
+): Promise<Map<string, TeamRow>> {
   if (providerIds.length === 0) return new Map();
-  const env = await getEnv();
+  const e = env ?? (await getEnv());
   const placeholders = providerIds.map(() => "?").join(",");
-  const { results } = await env.DB.prepare(
+  const { results } = await e.DB.prepare(
     `SELECT * FROM teams WHERE provider_id IN (${placeholders})`,
   )
     .bind(...providerIds)
@@ -22,11 +24,11 @@ export async function getTeamsByProviderIds(providerIds: string[]): Promise<Map<
   return new Map(results.map((t) => [t.provider_id, t]));
 }
 
-export async function getTeamsByIds(ids: string[]): Promise<Map<string, TeamRow>> {
+export async function getTeamsByIds(ids: string[], env?: Env): Promise<Map<string, TeamRow>> {
   if (ids.length === 0) return new Map();
-  const env = await getEnv();
+  const e = env ?? (await getEnv());
   const placeholders = ids.map(() => "?").join(",");
-  const { results } = await env.DB.prepare(
+  const { results } = await e.DB.prepare(
     `SELECT * FROM teams WHERE id IN (${placeholders})`,
   )
     .bind(...ids)

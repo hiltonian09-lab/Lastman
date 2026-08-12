@@ -1,10 +1,9 @@
-import "server-only";
 import Stripe from "stripe";
 import { getEnv } from "@/lib/cloudflare";
 
-export async function getStripe(): Promise<Stripe> {
-  const env = await getEnv();
-  return new Stripe(env.STRIPE_SECRET_KEY, {
+export async function getStripe(env?: Env): Promise<Stripe> {
+  const e = env ?? (await getEnv());
+  return new Stripe(e.STRIPE_SECRET_KEY, {
     httpClient: Stripe.createFetchHttpClient(),
   });
 }
