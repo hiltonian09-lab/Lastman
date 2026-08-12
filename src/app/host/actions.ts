@@ -92,7 +92,9 @@ export async function sendBroadcastAction(
   if (!user) redirect("/login");
 
   const game = await getGameBySlug(slug);
-  if (!game || game.owner_id !== user.id) redirect("/dashboard");
+  const isOwnerOrPlatformOwner =
+    !!game && (game.owner_id === user.id || user.role === "platform_owner");
+  if (!game || !isOwnerOrPlatformOwner) redirect("/dashboard");
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return { error: "Write a message first." };

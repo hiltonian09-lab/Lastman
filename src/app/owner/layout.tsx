@@ -17,6 +17,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           <Link href="/owner" className="hover:text-foreground">
             Overview
           </Link>
+          <Link href="/owner/games" className="hover:text-foreground">
+            Games
+          </Link>
           <Link href="/owner/pricing" className="hover:text-foreground">
             Pricing
           </Link>

@@ -15,7 +15,8 @@ export default async function GameSettingsPage({
 
   const game = await getGameBySlug(slug);
   if (!game) redirect("/dashboard");
-  if (game.owner_id !== user.id) redirect(`/games/${slug}`);
+  const isOwnerOrPlatformOwner = game.owner_id === user.id || user.role === "platform_owner";
+  if (!isOwnerOrPlatformOwner) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
   const [leagues, started] = await Promise.all([listLeagues(), hasGameStarted(game.id)]);

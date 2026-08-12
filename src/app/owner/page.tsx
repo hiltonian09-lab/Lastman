@@ -1,4 +1,5 @@
-import { getPlatformStats } from "@/lib/db/platform";
+import Link from "next/link";
+import { getPlatformStats, listAllGames } from "@/lib/db/platform";
 import { listFeedback } from "@/lib/db/feedback";
 
 function formatCents(cents: number): string {
@@ -6,7 +7,11 @@ function formatCents(cents: number): string {
 }
 
 export default async function OwnerOverviewPage() {
-  const [stats, feedback] = await Promise.all([getPlatformStats(), listFeedback(10)]);
+  const [stats, feedback, recentGames] = await Promise.all([
+    getPlatformStats(),
+    listFeedback(10),
+    listAllGames(5),
+  ]);
   const totalRevenue = stats.minimumFeeRevenueCents + stats.balanceFeeRevenueCents;
 
   return (
@@ -53,6 +58,39 @@ export default async function OwnerOverviewPage() {
           </p>
         </div>
       </div>
+
+      <section className="mt-10">
+        <div className="flex items-center justify-between">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            Recent games
+          </h2>
+          <Link href="/owner/games" className="text-sm text-royal-blue hover:underline">
+            View all
+          </Link>
+        </div>
+        <div className="mt-3 flex flex-col gap-2">
+          {recentGames.length === 0 && (
+            <p className="text-sm text-foreground-muted">No games created yet.</p>
+          )}
+          {recentGames.map((g) => (
+            <Link
+              key={g.id}
+              href={g.status === "draft" ? `/host/${g.slug}/setup` : `/host/${g.slug}`}
+              className="glass-card flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-glass"
+            >
+              <div>
+                <p>{g.name}</p>
+                <p className="text-xs text-foreground-muted">
+                  {g.type === "platform_official" ? "Official" : "Private"} · by{" "}
+                  {g.owner_name}
+                  {g.invite_code && <> · {g.invite_code}</>}
+                </p>
+              </div>
+              <span className="text-foreground-muted">{g.status}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-10">
         <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">

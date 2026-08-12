@@ -19,7 +19,9 @@ export async function updateSettingsAction(
   if (!user) redirect("/login");
 
   const game = await getGameBySlug(slug);
-  if (!game || game.owner_id !== user.id) redirect("/dashboard");
+  const isOwnerOrPlatformOwner =
+    !!game && (game.owner_id === user.id || user.role === "platform_owner");
+  if (!game || !isOwnerOrPlatformOwner) redirect("/dashboard");
 
   const started = await hasGameStarted(game.id);
 
