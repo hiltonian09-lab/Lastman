@@ -8,6 +8,7 @@ export interface RoundRow {
   round_number: number;
   deadline_at: string;
   status: "upcoming" | "locked" | "resolved";
+  reminder_sent_at?: string | null;
 }
 
 /**

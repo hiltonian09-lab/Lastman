@@ -1,4 +1,9 @@
 import type { RoundRow } from "@/lib/db/rounds";
+import { getGameById } from "@/lib/db/games";
+import { getTeamsByIds } from "@/lib/db/teams";
+import { sendEmail } from "@/lib/email/resend";
+import { eliminationEmail } from "@/lib/email/templates";
+import { getAppUrl } from "@/lib/http/app-url";
 import {
   getPicksWithFixturesForRound,
   setPickResult,
@@ -6,6 +11,7 @@ import {
   resolveRound as markRoundResolved,
   markWinners,
   getActiveEntries,
+  getEntryUserContact,
 } from "./queries";
 
 function pickOutcome(pick: {
@@ -39,6 +45,8 @@ export async function tryResolveRound(env: Env, round: RoundRow): Promise<void> 
   if (stillPending) return; // wait for the rest of the gameweek to finish
 
   const entriesBeforeResolution = await getActiveEntries(env, round.game_id);
+  const game = await getGameById(round.game_id, env);
+  const gameUrl = game ? `${getAppUrl(env)}/games/${game.slug}` : getAppUrl(env);
 
   for (const pick of picks) {
     if (pick.result !== "pending") continue;
@@ -53,7 +61,24 @@ export async function tryResolveRound(env: Env, round: RoundRow): Promise<void> 
 
     if (outcome !== "win") {
       const entry = entriesBeforeResolution.find((e) => e.id === pick.game_entry_id);
-      if (entry) await applySetback(env, entry, round.id);
+      if (!entry) continue;
+
+      const eliminated = await applySetback(env, entry, round.id);
+      if (eliminated && game) {
+        const [contact, teamsById] = await Promise.all([
+          getEntryUserContact(env, entry.id),
+          getTeamsByIds([pick.team_id], env),
+        ]);
+        const teamName = teamsById.get(pick.team_id)?.name ?? "your pick";
+        if (contact) {
+          const { subject, html } = eliminationEmail({
+            gameName: game.name,
+            teamName,
+            gameUrl,
+          });
+          await sendEmail({ to: contact.email, subject, html }, env);
+        }
+      }
     }
   }
 

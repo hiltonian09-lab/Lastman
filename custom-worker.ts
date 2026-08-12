@@ -11,7 +11,7 @@ export default {
   async scheduled(_event, env: Env) {
     const result = await runTick(env);
     console.log(
-      `[cron] rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
+      `[cron] reminders sent: ${result.remindersSent}, rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
     );
   },
 } satisfies ExportedHandler<Env>;

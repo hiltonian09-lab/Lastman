@@ -1,5 +1,9 @@
 import "server-only";
 import { getEnv } from "@/lib/cloudflare";
+import { getGameById } from "./games";
+import { sendEmail } from "@/lib/email/resend";
+import { broadcastEmail } from "@/lib/email/templates";
+import { getOrigin } from "@/lib/http/origin";
 
 export interface MessageRow {
   id: string;
@@ -19,6 +23,41 @@ export async function sendGameMessage(params: {
   )
     .bind(crypto.randomUUID(), params.gameId, params.senderId, params.body)
     .run();
+
+  await emailActiveEntrants(env, params.gameId, params.senderId, params.body);
+}
+
+async function emailActiveEntrants(
+  env: Env,
+  gameId: string,
+  senderId: string,
+  body: string,
+): Promise<void> {
+  const [game, sender, origin] = await Promise.all([
+    getGameById(gameId, env),
+    env.DB.prepare("SELECT name FROM users WHERE id = ?").bind(senderId).first<{ name: string }>(),
+    getOrigin(),
+  ]);
+  if (!game || !sender) return;
+
+  const { results: entrants } = await env.DB.prepare(
+    `SELECT users.email FROM game_entries
+     JOIN users ON users.id = game_entries.user_id
+     WHERE game_entries.game_id = ? AND game_entries.status = 'active'`,
+  )
+    .bind(gameId)
+    .all<{ email: string }>();
+
+  const { subject, html } = broadcastEmail({
+    gameName: game.name,
+    senderName: sender.name,
+    body,
+    gameUrl: `${origin}/games/${game.slug}`,
+  });
+
+  for (const entrant of entrants) {
+    await sendEmail({ to: entrant.email, subject, html }, env);
+  }
 }
 
 export async function listGameMessages(gameId: string): Promise<MessageRow[]> {

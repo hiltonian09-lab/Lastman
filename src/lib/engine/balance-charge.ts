@@ -1,7 +1,24 @@
 import { getStripe } from "@/lib/stripe/client";
 import { getActiveAdminFeeConfig, getAdminFeeChargeByGameId, recordBalanceOutcome } from "@/lib/db/admin-fee";
-import { setGameStatus } from "@/lib/db/games";
-import { countAllEntries } from "./queries";
+import { getGameById, setGameStatus } from "@/lib/db/games";
+import { sendEmail } from "@/lib/email/resend";
+import { gameBlockedEmail } from "@/lib/email/templates";
+import { getAppUrl } from "@/lib/http/app-url";
+import { countAllEntries, getUserContactById } from "./queries";
+
+async function notifyGameBlocked(env: Env, gameId: string): Promise<void> {
+  const game = await getGameById(gameId, env);
+  if (!game) return;
+
+  const owner = await getUserContactById(env, game.owner_id);
+  if (!owner) return;
+
+  const { subject, html } = gameBlockedEmail({
+    gameName: game.name,
+    gameUrl: `${getAppUrl(env)}/host/${game.slug}`,
+  });
+  await sendEmail({ to: owner.email, subject, html }, env);
+}
 
 /**
  * PLAN.md §6: once round 1 locks, charge the balance (headcount × per-player
@@ -38,6 +55,7 @@ export async function chargeBalanceIfDue(env: Env, gameId: string): Promise<void
       env,
     );
     await setGameStatus(gameId, "blocked", "admin_fee_balance_failed", env);
+    await notifyGameBlocked(env, gameId);
     return;
   }
 
@@ -74,5 +92,6 @@ export async function chargeBalanceIfDue(env: Env, gameId: string): Promise<void
       env,
     );
     await setGameStatus(gameId, "blocked", "admin_fee_balance_failed", env);
+    await notifyGameBlocked(env, gameId);
   }
 }

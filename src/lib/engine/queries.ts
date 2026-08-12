@@ -16,6 +16,41 @@ export async function getRoundsPastDeadline(env: Env): Promise<RoundRow[]> {
   return results;
 }
 
+/** Rounds whose deadline is within the next 24h, still upcoming, no reminder sent yet. */
+export async function getRoundsNeedingReminder(env: Env): Promise<RoundRow[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM rounds
+     WHERE status = 'upcoming' AND reminder_sent_at IS NULL
+       AND datetime(deadline_at) <= datetime('now', '+24 hours')
+       AND datetime(deadline_at) > datetime('now')`,
+  ).all<RoundRow>();
+  return results;
+}
+
+export async function markReminderSent(env: Env, roundId: string): Promise<void> {
+  await env.DB.prepare("UPDATE rounds SET reminder_sent_at = datetime('now') WHERE id = ?")
+    .bind(roundId)
+    .run();
+}
+
+export async function getActiveEntriesWithoutPick(
+  env: Env,
+  gameId: string,
+  roundId: string,
+): Promise<ActiveEntry[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT game_entries.id, game_entries.user_id, game_entries.lives_remaining
+     FROM game_entries
+     WHERE game_entries.game_id = ? AND game_entries.status = 'active'
+       AND NOT EXISTS (
+         SELECT 1 FROM picks WHERE picks.game_entry_id = game_entries.id AND picks.round_id = ?
+       )`,
+  )
+    .bind(gameId, roundId)
+    .all<ActiveEntry>();
+  return results;
+}
+
 export async function getLockedUnresolvedRounds(env: Env): Promise<RoundRow[]> {
   const { results } = await env.DB.prepare(
     `SELECT * FROM rounds WHERE status = 'locked'`,
@@ -115,25 +150,50 @@ export async function setPickResult(
   await env.DB.prepare("UPDATE picks SET result = ? WHERE id = ?").bind(result, pickId).run();
 }
 
-/** Applies a life loss (or elimination if no lives remain) to an entry. */
+/** Applies a life loss (or elimination if no lives remain) to an entry. Returns true if eliminated. */
 export async function applySetback(
   env: Env,
   entry: ActiveEntry,
   roundId: string,
-): Promise<void> {
+): Promise<boolean> {
   if (entry.lives_remaining > 0) {
     await env.DB.prepare(
       "UPDATE game_entries SET lives_remaining = lives_remaining - 1 WHERE id = ?",
     )
       .bind(entry.id)
       .run();
-  } else {
-    await env.DB.prepare(
-      "UPDATE game_entries SET status = 'eliminated', eliminated_at_round_id = ? WHERE id = ?",
-    )
-      .bind(roundId, entry.id)
-      .run();
+    return false;
   }
+
+  await env.DB.prepare(
+    "UPDATE game_entries SET status = 'eliminated', eliminated_at_round_id = ? WHERE id = ?",
+  )
+    .bind(roundId, entry.id)
+    .run();
+  return true;
+}
+
+export interface UserContact {
+  name: string;
+  email: string;
+}
+
+export async function getUserContactById(env: Env, userId: string): Promise<UserContact | null> {
+  const row = await env.DB.prepare("SELECT name, email FROM users WHERE id = ?")
+    .bind(userId)
+    .first<UserContact>();
+  return row ?? null;
+}
+
+export async function getEntryUserContact(env: Env, entryId: string): Promise<UserContact | null> {
+  const row = await env.DB.prepare(
+    `SELECT users.name, users.email FROM game_entries
+     JOIN users ON users.id = game_entries.user_id
+     WHERE game_entries.id = ?`,
+  )
+    .bind(entryId)
+    .first<UserContact>();
+  return row ?? null;
 }
 
 export async function markWinners(env: Env, gameId: string, entryIds: string[]): Promise<void> {
