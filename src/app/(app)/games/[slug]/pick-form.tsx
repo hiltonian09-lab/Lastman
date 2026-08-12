@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { submitPickAction, type PickFormState } from "./actions";
+import { EmptyState } from "@/components/empty-state";
 import type { PickOption } from "@/lib/football/round-pool";
 import type { FormResult } from "@/lib/db/team-form";
 
@@ -139,10 +140,10 @@ export function PickForm({
         )}
 
         {options.length === 0 && (
-          <p className="text-sm text-foreground-muted">
-            No fixtures available to pick from this gameweek yet — check back
-            closer to kickoff.
-          </p>
+          <EmptyState
+            title="No fixtures available"
+            description="Check back closer to kickoff — picks will appear once the gameweek is known."
+          />
         )}
 
         {state.error && <p className="text-sm text-red-400">{state.error}</p>}

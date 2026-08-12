@@ -14,6 +14,7 @@ import { formatRelativeTime } from "@/lib/format/relative-time";
 import { getOrigin } from "@/lib/http/origin";
 import { PrizeFundCard } from "@/components/prize-fund-card";
 import { LeagueInfoCard } from "@/components/league-info-card";
+import { EmptyState } from "@/components/empty-state";
 import { BroadcastForm } from "./broadcast-form";
 import { InviteLink } from "./invite-link";
 
@@ -165,9 +166,10 @@ export default async function GameDashboardPage({
         </h2>
         <div className="mt-3 flex flex-col gap-2">
           {entries.length === 0 && (
-            <p className="text-sm text-foreground-muted">
-              No one&rsquo;s joined yet — share your invite code.
-            </p>
+            <EmptyState
+              title="No entrants yet"
+              description="Share your invite code to get players in."
+            />
           )}
           {entries.map((e) => (
             <Link

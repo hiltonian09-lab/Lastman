@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { listPublicOpenGames } from "@/lib/db/games";
 import { joinPublicGameAction } from "../join/actions";
+import { EmptyState } from "@/components/empty-state";
 
 export default async function BrowseGamesPage() {
   const games = await listPublicOpenGames();
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
           Browse games
         </h1>
@@ -20,17 +21,22 @@ export default async function BrowseGamesPage() {
       </div>
 
       {games.length === 0 && (
-        <p className="mt-8 text-sm text-foreground-muted">
-          No public games right now — check back once the season kicks off, or
-          use an invite code from an organiser.
-        </p>
+        <div className="mt-8">
+          <EmptyState
+            title="No public games"
+            description="Check back once the season kicks off, or join with an invite code."
+          />
+        </div>
       )}
 
       <div className="mt-8 flex flex-col gap-4">
         {games.map((game) => {
           const joinAction = joinPublicGameAction.bind(null, game.slug);
           return (
-            <div key={game.id} className="glass-card flex items-center justify-between p-6">
+            <div
+              key={game.id}
+              className="glass-card flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
                 <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
                   {game.name}

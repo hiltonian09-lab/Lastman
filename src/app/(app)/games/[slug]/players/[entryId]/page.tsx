@@ -5,6 +5,7 @@ import { getGameBySlug } from "@/lib/db/games";
 import { isUserInGame } from "@/lib/db/game-entries";
 import { getEntryDetail, getPickHistoryForEntry } from "@/lib/db/round-stats";
 import { getPlayerStats } from "@/lib/db/stats";
+import { EmptyState } from "@/components/empty-state";
 
 function formatKickoff(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -126,10 +127,10 @@ export default async function PlayerHistoryPage({
         </h2>
         <div className="mt-3 flex flex-col gap-2">
           {history.length === 0 && (
-            <p className="text-sm text-foreground-muted">
-              No completed rounds yet — check back once the first gameweek
-              resolves.
-            </p>
+            <EmptyState
+              title="No completed rounds"
+              description="Check back once the first gameweek resolves."
+            />
           )}
           {history.map((h, i) => (
             <div

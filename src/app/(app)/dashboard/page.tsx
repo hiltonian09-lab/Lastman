@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { listGamesForUser } from "@/lib/db/game-entries";
 import { listGamesOwnedBy } from "@/lib/db/games";
 import { getPlayerStats } from "@/lib/db/stats";
+import { EmptyState } from "@/components/empty-state";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -47,9 +48,12 @@ export default async function DashboardPage() {
           Playing
         </h2>
         {playing.length === 0 ? (
-          <p className="mt-3 text-sm text-foreground-muted">
-            You&rsquo;re not in any games yet.
-          </p>
+          <div className="mt-3">
+            <EmptyState
+              title="Not in any games"
+              description="Join a public game or use an invite code to get started."
+            />
+          </div>
         ) : (
           <div className="mt-3 flex flex-col gap-2">
             {playingWithStats.map(({ game, stats }) => (
