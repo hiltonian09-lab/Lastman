@@ -65,6 +65,9 @@ export async function markMinimumFeePaid(params: {
   paymentMethodId: string | null;
 }): Promise<void> {
   const env = await getEnv();
+  const charge = await getAdminFeeChargeByGameId(params.gameId, env);
+  if (!charge) throw new Error("Admin fee charge not found for game");
+
   await env.DB.batch([
     env.DB.prepare(
       `UPDATE admin_fee_charges
@@ -75,7 +78,61 @@ export async function markMinimumFeePaid(params: {
     env.DB.prepare(
       `UPDATE games SET status = 'open' WHERE id = ? AND status = 'draft'`,
     ).bind(params.gameId),
+    env.DB.prepare(
+      `INSERT INTO admin_fee_ledger
+         (id, game_id, owner_id, kind, amount_cents, status, payment_intent_id, player_count_at_lock)
+       VALUES (?, ?, ?, 'minimum', ?, 'paid', ?, NULL)`,
+    ).bind(
+      crypto.randomUUID(),
+      params.gameId,
+      charge.owner_id,
+      charge.minimum_fee_cents,
+      params.paymentIntentId,
+    ),
   ]);
+}
+
+export async function recordAdminFeeLedger(
+  env: Env,
+  params: {
+    gameId: string;
+    ownerId: string;
+    kind: "minimum" | "balance";
+    amountCents: number;
+    status: "paid" | "failed";
+    paymentIntentId: string | null;
+    playerCountAtLock?: number | null;
+  },
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO admin_fee_ledger
+       (id, game_id, owner_id, kind, amount_cents, status, payment_intent_id, player_count_at_lock)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      crypto.randomUUID(),
+      params.gameId,
+      params.ownerId,
+      params.kind,
+      params.amountCents,
+      params.status,
+      params.paymentIntentId ?? null,
+      params.playerCountAtLock ?? null,
+    )
+    .run();
+}
+
+export async function getRevenueSummary(
+  env?: Env,
+): Promise<{ total_cents: number; games_charged: number }> {
+  const e = env ?? (await getEnv());
+  const row = await e.DB.prepare(
+    `SELECT COALESCE(SUM(amount_cents), 0) as total_cents,
+            COUNT(DISTINCT game_id) as games_charged
+     FROM admin_fee_ledger
+     WHERE status = 'paid'`,
+  ).first<{ total_cents: number; games_charged: number }>();
+  return row ?? { total_cents: 0, games_charged: 0 };
 }
 
 /** Cron-only: records the computed balance and its outcome once round 1 locks. */
@@ -104,4 +161,17 @@ export async function recordBalanceOutcome(
       params.gameId,
     )
     .run();
+
+  const charge = await getAdminFeeChargeByGameId(params.gameId, e);
+  if (charge) {
+    await recordAdminFeeLedger(e, {
+      gameId: params.gameId,
+      ownerId: charge.owner_id,
+      kind: "balance",
+      amountCents: params.balanceCents,
+      status: params.status,
+      paymentIntentId: params.paymentIntentId,
+      playerCountAtLock: params.playerCountAtLock,
+    });
+  }
 }
