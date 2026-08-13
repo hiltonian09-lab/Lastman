@@ -19,6 +19,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/games" className="hover:text-foreground">
             Browse games
           </Link>
+          <Link href="/leagues" className="hover:text-foreground">
+            Leagues
+          </Link>
           <ThemeToggle />
           {user ? (
             <>

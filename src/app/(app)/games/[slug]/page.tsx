@@ -13,9 +13,11 @@ import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { getRecentFormForTeams, getHeadToHeadForTeams } from "@/lib/db/team-form";
 import { getPreviousSeasonPositions } from "@/lib/db/standings";
+import { getLeagueTable } from "@/lib/db/league-table";
 import { parsePrizeSplits } from "@/lib/prize";
 import { PrizeFundCard } from "@/components/prize-fund-card";
 import { LeagueInfoCard } from "@/components/league-info-card";
+import { LeagueTablePreview } from "@/components/league-table-preview";
 import { PickForm } from "./pick-form";
 
 export default async function PlayerGamePage({
@@ -81,6 +83,13 @@ export default async function PlayerGamePage({
       getUpcomingFixturesPreview(leagueIds),
     ]);
 
+  const leagueTables = await Promise.all(
+    leagues.map(async (league) => ({
+      league,
+      rows: await getLeagueTable(league.id),
+    })),
+  );
+
   const activeCount = entries.filter((e) => e.status === "active").length;
   const optionTeamIds = Array.from(new Set(options.map((o) => o.teamId)));
 
@@ -109,6 +118,24 @@ export default async function PlayerGamePage({
           </p>
           <p className="mt-1 text-sm">{messages[0].body}</p>
         </div>
+      )}
+
+      {leagueTables.length > 0 && (
+        <section className="mt-6">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            {leagueTables.length === 1 ? leagueTables[0].league.name : "This game's leagues"}
+          </h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {leagueTables.map(({ league, rows }) => (
+              <LeagueTablePreview
+                key={league.id}
+                leagueId={league.id}
+                leagueName={league.name}
+                rows={rows}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="mt-6 flex flex-col gap-4">
