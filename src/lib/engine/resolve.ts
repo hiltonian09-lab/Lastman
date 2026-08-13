@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email/resend";
 import { eliminationEmail } from "@/lib/email/templates";
 import { getAppUrl } from "@/lib/http/app-url";
 import { recordRoundSnapshot } from "@/lib/db/stats";
+import { pickOutcome } from "./pick-outcome";
 import {
   getPicksWithFixturesForRound,
   setPickResult,
@@ -14,22 +15,6 @@ import {
   getActiveEntries,
   getEntryUserContact,
 } from "./queries";
-
-function pickOutcome(pick: {
-  team_id: string;
-  home_team_id: string;
-  away_team_id: string;
-  home_score: number | null;
-  away_score: number | null;
-}): "win" | "loss" | "draw" {
-  const isHome = pick.team_id === pick.home_team_id;
-  const own = isHome ? pick.home_score : pick.away_score;
-  const opp = isHome ? pick.away_score : pick.home_score;
-  if (own === null || opp === null) return "loss"; // shouldn't happen once fixture is finished
-  if (own > opp) return "win";
-  if (own === opp) return "draw";
-  return "loss";
-}
 
 /**
  * Resolves a locked round once every fixture its picks reference has finished
