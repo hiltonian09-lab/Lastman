@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameByInviteCode, getGameBySlug } from "@/lib/db/games";
 import { joinGame } from "@/lib/db/game-entries";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export interface JoinFormState {
   error?: string;
@@ -15,6 +16,9 @@ export async function joinByCodeAction(
 ): Promise<JoinFormState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const limit = await checkRateLimit("join_by_code", 10, 60);
+  if (!limit.ok) return { error: "Too many attempts. Please try again in a minute." };
 
   const code = String(formData.get("code") ?? "").trim();
   if (!code) return { error: "Enter an invite code." };
@@ -31,6 +35,9 @@ export async function joinByCodeAction(
 export async function joinPublicGameAction(slug: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const limit = await checkRateLimit("join_public", 10, 60);
+  if (!limit.ok) return;
 
   const game = await getGameBySlug(slug);
   if (!game) redirect("/games");
