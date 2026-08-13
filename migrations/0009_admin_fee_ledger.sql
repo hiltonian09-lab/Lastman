@@ -9,7 +9,7 @@ CREATE TABLE admin_fee_ledger (
   status TEXT NOT NULL,
   payment_intent_id TEXT,
   player_count_at_lock INTEGER,
-  created_at TEXT NOT NULL DEFAULT datetime('now')
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX idx_admin_fee_ledger_game ON admin_fee_ledger(game_id);

@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 import { runBatchedStatements } from "./fixtures";
 

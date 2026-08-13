@@ -21,15 +21,8 @@
       "id": "8fc8f8f020f8423fb538e02c41738415"
     }
   ],
-  // TODO: create this bucket in the Cloudflare dashboard and update the name.
-  "r2_buckets": [
-    {
-      "binding": "STORAGE",
-      "bucket_name": "the-gauntlet-storage"
-    }
-  ],
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["*/10 * * * *"]
   },
   "vars": {
     "BRAND_NAME": "The Gauntlet",

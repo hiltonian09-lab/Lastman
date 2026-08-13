@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 import type { RoundRow } from "./rounds";
 import type { PickRow } from "./picks";
