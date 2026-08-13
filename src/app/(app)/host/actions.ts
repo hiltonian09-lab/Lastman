@@ -7,6 +7,7 @@ import { createPendingAdminFeeCharge, getActiveAdminFeeConfig } from "@/lib/db/a
 import { createMinimumFeeCheckoutSession } from "@/lib/stripe/admin-fee-checkout";
 import { sendGameMessage } from "@/lib/db/messages";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { parsePrizeForm } from "@/lib/prize";
 import { revalidatePath } from "next/cache";
 
 export interface HostFormState {
@@ -32,7 +33,6 @@ export async function createGameAction(
   ) as GameRules["missedPickPolicy"];
   const tiebreaker = String(formData.get("tiebreaker") ?? "split") as GameRules["tiebreaker"];
   const displayEntryFeeRaw = String(formData.get("displayEntryFee") ?? "").trim();
-  const displayPrizePoolNote = String(formData.get("displayPrizePoolNote") ?? "").trim();
   const visibility = String(formData.get("visibility") ?? "invite_only") as
     | "public"
     | "invite_only";
@@ -57,6 +57,9 @@ export async function createGameAction(
     return { error: "Entry fee must be a valid amount." };
   }
 
+  const prizeForm = parsePrizeForm(formData);
+  if ("error" in prizeForm) return { error: prizeForm.error };
+
   const rules: GameRules = { lives, missedPickPolicy, tiebreaker };
 
   const game = await createGame({
@@ -66,9 +69,13 @@ export async function createGameAction(
     maxPlayers,
     rules,
     displayEntryFeeCents,
-    displayPrizePoolNote: displayPrizePoolNote || null,
+    displayPrizePoolNote: null,
     visibility,
     startsAt: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
+    prizeFundPercent: prizeForm.prizeFundPercent,
+    prizePlaces: prizeForm.prizePlaces,
+    prizeSplits: prizeForm.prizeSplits,
+    boobyPrizePercent: prizeForm.boobyPrizePercent,
   });
 
   const feeConfig = await getActiveAdminFeeConfig();

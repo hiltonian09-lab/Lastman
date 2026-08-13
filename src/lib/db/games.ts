@@ -22,6 +22,10 @@ export interface GameRow {
   rules_json: string; // JSON GameRules
   display_entry_fee_cents: number | null;
   display_prize_pool_note: string | null;
+  prize_fund_percent: number | null;
+  prize_places: number | null;
+  prize_splits_json: string | null;
+  booby_prize_percent: number | null;
   currency: string;
   max_players: number | null;
   status: "draft" | "open" | "locked" | "in_progress" | "blocked" | "completed" | "cancelled";
@@ -60,6 +64,10 @@ export interface CreateGameParams {
   displayPrizePoolNote: string | null;
   visibility: "public" | "invite_only";
   startsAt: string | null;
+  prizeFundPercent: number | null;
+  prizePlaces: number | null;
+  prizeSplits: number[] | null;
+  boobyPrizePercent: number | null;
 }
 
 export async function createGame(params: CreateGameParams): Promise<GameRow> {
@@ -84,8 +92,9 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
   await env.DB.prepare(
     `INSERT INTO games
       (id, name, slug, owner_id, type, league_ids, rules_json, display_entry_fee_cents,
-       display_prize_pool_note, currency, max_players, status, invite_code, visibility, starts_at)
-     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?, ?)`,
+       display_prize_pool_note, currency, max_players, status, invite_code, visibility, starts_at,
+       prize_fund_percent, prize_places, prize_splits_json, booby_prize_percent)
+     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -100,6 +109,10 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
       inviteCode,
       params.visibility,
       params.startsAt,
+      params.prizeFundPercent,
+      params.prizePlaces,
+      params.prizeSplits ? JSON.stringify(params.prizeSplits) : null,
+      params.boobyPrizePercent,
     )
     .run();
 
@@ -238,6 +251,10 @@ export interface UpdateGameSettingsParams {
   displayPrizePoolNote?: string | null;
   visibility?: "public" | "invite_only";
   startsAt?: string | null;
+  prizeFundPercent?: number | null;
+  prizePlaces?: number | null;
+  prizeSplits?: number[] | null;
+  boobyPrizePercent?: number | null;
 }
 
 export async function updateGameSettings(
@@ -254,7 +271,8 @@ export async function updateGameSettings(
   await env.DB.prepare(
     `UPDATE games SET
        league_ids = ?, rules_json = ?, max_players = ?,
-       display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?, starts_at = ?
+       display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?, starts_at = ?,
+       prize_fund_percent = ?, prize_places = ?, prize_splits_json = ?, booby_prize_percent = ?
      WHERE id = ?`,
   )
     .bind(
@@ -269,6 +287,16 @@ export async function updateGameSettings(
         : game.display_prize_pool_note,
       params.visibility ?? game.visibility,
       params.startsAt !== undefined ? params.startsAt : game.starts_at,
+      params.prizeFundPercent !== undefined ? params.prizeFundPercent : game.prize_fund_percent,
+      params.prizePlaces !== undefined ? params.prizePlaces : game.prize_places,
+      params.prizeSplits !== undefined
+        ? params.prizeSplits
+          ? JSON.stringify(params.prizeSplits)
+          : null
+        : game.prize_splits_json,
+      params.boobyPrizePercent !== undefined
+        ? params.boobyPrizePercent
+        : game.booby_prize_percent,
       gameId,
     )
     .run();

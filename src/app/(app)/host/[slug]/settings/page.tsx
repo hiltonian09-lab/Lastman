@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug, hasGameStarted } from "@/lib/db/games";
 import { listLeagues } from "@/lib/db/leagues";
+import { DEFAULT_PRIZE_CONFIG, parsePrizeSplits } from "@/lib/prize";
 import { SettingsForm } from "./settings-form";
 
 export default async function GameSettingsPage({
@@ -53,10 +54,15 @@ export default async function GameSettingsPage({
               ? (game.display_entry_fee_cents / 100).toFixed(2)
               : ""
           }
-          currentPrizePoolNote={game.display_prize_pool_note ?? ""}
           currentVisibility={game.visibility}
           isOfficial={game.type === "platform_official"}
           currentStartsAt={game.starts_at ? game.starts_at.slice(0, 10) : ""}
+          currentPrizeFundPercent={game.prize_fund_percent ?? DEFAULT_PRIZE_CONFIG.prizeFundPercent}
+          currentPrizePlaces={game.prize_places ?? DEFAULT_PRIZE_CONFIG.splitPercents.length}
+          currentPrizeSplits={
+            parsePrizeSplits(game.prize_splits_json) ?? DEFAULT_PRIZE_CONFIG.splitPercents
+          }
+          currentBoobyPrizePercent={game.booby_prize_percent ?? DEFAULT_PRIZE_CONFIG.boobyPercent}
         />
       </div>
     </div>

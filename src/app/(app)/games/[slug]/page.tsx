@@ -13,6 +13,7 @@ import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { getRecentFormForTeams, getHeadToHeadForTeams } from "@/lib/db/team-form";
 import { getPreviousSeasonPositions } from "@/lib/db/standings";
+import { parsePrizeSplits } from "@/lib/prize";
 import { PrizeFundCard } from "@/components/prize-fund-card";
 import { LeagueInfoCard } from "@/components/league-info-card";
 import { PickForm } from "./pick-form";
@@ -114,7 +115,10 @@ export default async function PlayerGamePage({
         <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}
-          prizePoolNote={game.display_prize_pool_note}
+          playerCount={entries.length}
+          prizeFundPercent={game.prize_fund_percent}
+          splitPercents={parsePrizeSplits(game.prize_splits_json)}
+          boobyPercent={game.booby_prize_percent}
         />
       </div>
 

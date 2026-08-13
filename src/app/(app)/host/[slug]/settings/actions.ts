@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug, hasGameStarted, updateGameSettings, type GameRules } from "@/lib/db/games";
+import { parsePrizeForm } from "@/lib/prize";
 
 export interface SettingsFormState {
   error?: string;
@@ -31,7 +32,6 @@ export async function updateSettingsAction(
     formData.get("missedPickPolicy") ?? "lowest_alphabetical",
   ) as GameRules["missedPickPolicy"];
   const displayEntryFeeRaw = String(formData.get("displayEntryFee") ?? "").trim();
-  const displayPrizePoolNote = String(formData.get("displayPrizePoolNote") ?? "").trim();
   const visibility = String(formData.get("visibility") ?? game.visibility) as
     | "public"
     | "invite_only";
@@ -56,18 +56,26 @@ export async function updateSettingsAction(
     return { error: "Entry fee must be a valid amount." };
   }
 
+  const isOfficial = game.type === "platform_official";
+  const prizeForm = isOfficial ? null : parsePrizeForm(formData);
+  if (prizeForm && "error" in prizeForm) return { error: prizeForm.error };
+
   await updateGameSettings(game.id, {
     leagueIds: started ? undefined : leagueIds,
     maxPlayers,
     missedPickPolicy,
     displayEntryFeeCents,
-    displayPrizePoolNote: displayPrizePoolNote || null,
-    visibility: game.type === "platform_official" ? undefined : visibility,
+    displayPrizePoolNote: null,
+    visibility: isOfficial ? undefined : visibility,
     startsAt: started
       ? undefined
       : startsAtRaw
         ? new Date(startsAtRaw).toISOString()
         : null,
+    prizeFundPercent: prizeForm ? prizeForm.prizeFundPercent : undefined,
+    prizePlaces: prizeForm ? prizeForm.prizePlaces : undefined,
+    prizeSplits: prizeForm ? prizeForm.prizeSplits : undefined,
+    boobyPrizePercent: prizeForm ? prizeForm.boobyPrizePercent : undefined,
   });
 
   revalidatePath(`/host/${slug}`);

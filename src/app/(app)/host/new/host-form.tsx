@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createGameAction, type HostFormState } from "../actions";
+import { PrizeStructureFields } from "@/components/prize-structure-fields";
 import type { LeagueRow } from "@/lib/db/leagues";
 
 const initialState: HostFormState = {};
@@ -100,13 +101,13 @@ export function HostForm({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1 text-sm">
-          Entry fee (display only — optional)
+          Entry fee (display only)
           <input
             name="displayEntryFee"
             type="number"
             step="0.01"
             min={0}
-            placeholder="e.g. 10.00"
+            defaultValue="10.00"
             className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
           />
         </label>
@@ -123,15 +124,13 @@ export function HostForm({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Prize pool note (display only — optional)
-        <input
-          name="displayPrizePoolNote"
-          type="text"
-          placeholder="e.g. Winner takes the pot, paid by me directly"
-          className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
-        />
-      </label>
+      <p className="text-xs text-foreground-muted">
+        Entry fees and prizes are arranged directly between you and your
+        players — the platform never collects or holds this money. The
+        breakdown below is only visible to you, to help you see your margin
+        after platform fees.
+      </p>
+      <PrizeStructureFields />
 
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 

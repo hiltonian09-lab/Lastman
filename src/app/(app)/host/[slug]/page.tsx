@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug } from "@/lib/db/games";
 import { listEntriesForGame } from "@/lib/db/game-entries";
-import { getAdminFeeChargeByGameId } from "@/lib/db/admin-fee";
+import { getAdminFeeChargeByGameId, getActiveAdminFeeConfig } from "@/lib/db/admin-fee";
 import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { getRoundsWithStats, getEntriesWithoutPickForRound } from "@/lib/db/round-stats";
@@ -12,6 +12,13 @@ import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { getOrigin } from "@/lib/http/origin";
+import {
+  calculatePrizeBreakdown,
+  calculateNetProfitCents,
+  calculatePlatformCostCents,
+  parsePrizeSplits,
+  DEFAULT_PRIZE_CONFIG,
+} from "@/lib/prize";
 import { PrizeFundCard } from "@/components/prize-fund-card";
 import { LeagueInfoCard } from "@/components/league-info-card";
 import { EmptyState } from "@/components/empty-state";
@@ -33,18 +40,34 @@ export default async function GameDashboardPage({
   if (!isOwnerOrPlatformOwner) redirect(`/games/${slug}`);
   if (game.status === "draft") redirect(`/host/${slug}/setup`);
 
-  const [entries, adminFee, messages, fixturesSync, origin, rounds, trend, survival] = await Promise.all([
-    listEntriesForGame(game.id),
-    getAdminFeeChargeByGameId(game.id),
-    listGameMessages(game.id),
-    getSyncStatus("live_scores"),
-    getOrigin(),
-    getRoundsWithStats(game.id),
-    getGameTrend(game.id),
-    getGameSurvivalStats(game.id),
-  ]);
+  const [entries, adminFee, messages, fixturesSync, origin, rounds, trend, survival, feeConfig] =
+    await Promise.all([
+      listEntriesForGame(game.id),
+      getAdminFeeChargeByGameId(game.id),
+      listGameMessages(game.id),
+      getSyncStatus("live_scores"),
+      getOrigin(),
+      getRoundsWithStats(game.id),
+      getGameTrend(game.id),
+      getGameSurvivalStats(game.id),
+      getActiveAdminFeeConfig(),
+    ]);
 
   const activeCount = entries.filter((e) => e.status === "active").length;
+  const isOfficial = game.type === "platform_official";
+  const prizeConfig = {
+    entryFeeCents: game.display_entry_fee_cents ?? DEFAULT_PRIZE_CONFIG.entryFeeCents,
+    prizeFundPercent: game.prize_fund_percent ?? DEFAULT_PRIZE_CONFIG.prizeFundPercent,
+    splitPercents: parsePrizeSplits(game.prize_splits_json) ?? DEFAULT_PRIZE_CONFIG.splitPercents,
+    boobyPercent: game.booby_prize_percent ?? DEFAULT_PRIZE_CONFIG.boobyPercent,
+  };
+  const prizeBreakdown = calculatePrizeBreakdown(prizeConfig, entries.length);
+  const platformCostCents = calculatePlatformCostCents(entries.length, feeConfig);
+  const netProfitCents = calculateNetProfitCents(
+    prizeBreakdown.grossProfitCents,
+    entries.length,
+    feeConfig,
+  );
   const currentRound = rounds.find((r) => r.status !== "resolved");
   const missingPicks = currentRound
     ? await getEntriesWithoutPickForRound(game.id, currentRound.id)
@@ -95,9 +118,53 @@ export default async function GameDashboardPage({
         <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}
-          prizePoolNote={game.display_prize_pool_note}
+          playerCount={entries.length}
+          prizeFundPercent={game.prize_fund_percent}
+          splitPercents={parsePrizeSplits(game.prize_splits_json)}
+          boobyPercent={game.booby_prize_percent}
         />
       </div>
+
+      {!isOfficial && game.display_entry_fee_cents !== null && (
+        <section className="mt-6">
+          <div className="glass-card border-gold/30 p-4">
+            <p className="text-xs uppercase tracking-wide text-gold">
+              Your profit calculator — only you can see this
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div>
+                <p className="text-foreground-muted">Total fund</p>
+                <p className="font-medium">£{(prizeBreakdown.totalFundCents / 100).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-foreground-muted">Prize fund</p>
+                <p className="font-medium">£{(prizeBreakdown.prizeFundCents / 100).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-foreground-muted">Gross profit</p>
+                <p className="font-medium">£{(prizeBreakdown.grossProfitCents / 100).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-foreground-muted">Platform cost</p>
+                <p className="font-medium">£{(platformCostCents / 100).toFixed(2)}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm">
+              Net profit:{" "}
+              <span className={netProfitCents >= 0 ? "text-status-alive" : "text-status-eliminated"}>
+                £{(netProfitCents / 100).toFixed(2)}
+              </span>
+            </p>
+            <p className="mt-2 text-xs text-foreground-muted">
+              Estimated from {entries.length} current player{entries.length === 1 ? "" : "s"} × your
+              entry fee, minus the platform&rsquo;s £{(feeConfig.minimum_fee_cents / 100).toFixed(2)}{" "}
+              minimum / £{(feeConfig.per_player_fee_cents / 100).toFixed(2)}-per-player fee. This
+              platform never collects the entry fee itself, so this is a projection, not a reconciled
+              ledger.
+            </p>
+          </div>
+        </section>
+      )}
 
       {adminFee && (
         <div className="glass-card mt-6 p-4 text-sm">

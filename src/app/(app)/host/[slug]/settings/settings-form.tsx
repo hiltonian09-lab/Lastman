@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateSettingsAction, type SettingsFormState } from "./actions";
+import { PrizeStructureFields } from "@/components/prize-structure-fields";
 import type { LeagueRow } from "@/lib/db/leagues";
 
 const initialState: SettingsFormState = {};
@@ -14,10 +15,13 @@ export function SettingsForm({
   currentMaxPlayers,
   currentMissedPickPolicy,
   currentDisplayEntryFee,
-  currentPrizePoolNote,
   currentVisibility,
   isOfficial,
   currentStartsAt,
+  currentPrizeFundPercent,
+  currentPrizePlaces,
+  currentPrizeSplits,
+  currentBoobyPrizePercent,
 }: {
   slug: string;
   leagues: LeagueRow[];
@@ -26,10 +30,13 @@ export function SettingsForm({
   currentMaxPlayers: number | null;
   currentMissedPickPolicy: string;
   currentDisplayEntryFee: string;
-  currentPrizePoolNote: string;
   currentVisibility: string;
   isOfficial: boolean;
   currentStartsAt: string;
+  currentPrizeFundPercent: number;
+  currentPrizePlaces: number;
+  currentPrizeSplits: number[];
+  currentBoobyPrizePercent: number;
 }) {
   const action = updateSettingsAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -127,15 +134,19 @@ export function SettingsForm({
       )}
 
       {!isOfficial && (
-        <label className="flex flex-col gap-1 text-sm">
-          Prize pool note (display only)
-          <input
-            name="displayPrizePoolNote"
-            type="text"
-            defaultValue={currentPrizePoolNote}
-            className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
+        <>
+          <p className="text-xs text-foreground-muted">
+            Only visible to you — helps you see your margin after platform
+            fees. Players see the entry fee and prize breakdown, not your
+            profit.
+          </p>
+          <PrizeStructureFields
+            defaultPrizeFundPercent={currentPrizeFundPercent}
+            defaultPrizePlaces={currentPrizePlaces}
+            defaultPrizeSplits={currentPrizeSplits}
+            defaultBoobyPrizePercent={currentBoobyPrizePercent}
           />
-        </label>
+        </>
       )}
 
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
