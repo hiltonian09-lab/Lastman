@@ -6,6 +6,7 @@ import { createGame, getGameBySlug, type GameRules } from "@/lib/db/games";
 import { createPendingAdminFeeCharge, getActiveAdminFeeConfig } from "@/lib/db/admin-fee";
 import { createMinimumFeeCheckoutSession } from "@/lib/stripe/admin-fee-checkout";
 import { sendGameMessage } from "@/lib/db/messages";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 
 export interface HostFormState {
@@ -18,6 +19,9 @@ export async function createGameAction(
 ): Promise<HostFormState> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const limit = await checkRateLimit("create_game", 5, 60);
+  if (!limit.ok) return { error: "Too many attempts. Please try again in a minute." };
 
   const name = String(formData.get("name") ?? "").trim();
   const leagueIds = formData.getAll("leagueIds").map(String);

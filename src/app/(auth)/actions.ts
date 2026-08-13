@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { createUser, getUserByEmail, syncPlatformOwnerRole } from "@/lib/db/users";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export interface AuthFormState {
   error?: string;
@@ -15,6 +16,9 @@ export async function signupAction(
   _prevState: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  const limit = await checkRateLimit("auth_signup", 5, 60);
+  if (!limit.ok) return { error: "Too many attempts. Please try again in a minute." };
+
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -38,6 +42,9 @@ export async function loginAction(
   _prevState: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  const limit = await checkRateLimit("auth_login", 10, 60);
+  if (!limit.ok) return { error: "Too many attempts. Please try again in a minute." };
+
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
