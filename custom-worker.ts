@@ -4,16 +4,22 @@
 // @ts-ignore
 import { default as handler } from "./.open-next/worker.js";
 import { runTick } from "./src/lib/engine/tick";
+import { reportError } from "./src/lib/error";
 
 export default {
   fetch: handler.fetch,
 
   async scheduled(_event, env: Env) {
-    const result = await runTick(env);
-    console.log(
-      `[cron] live scores synced: ${result.liveScoresSynced}, full schedule synced: ${result.fullScheduleSynced}, ` +
-        `previous-season standings synced: ${result.previousSeasonStandingsSynced}, ` +
-        `reminders sent: ${result.remindersSent}, rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
-    );
+    try {
+      const result = await runTick(env);
+      console.log(
+        `[cron] live scores synced: ${result.liveScoresSynced}, full schedule synced: ${result.fullScheduleSynced}, ` +
+          `previous-season standings synced: ${result.previousSeasonStandingsSynced}, ` +
+          `reminders sent: ${result.remindersSent}, rounds locked: ${result.roundsLocked}, resolution passes: ${result.roundsResolved}`,
+      );
+    } catch (err) {
+      reportError(err, { source: "cron" });
+      throw err;
+    }
   },
 } satisfies ExportedHandler<Env>;
