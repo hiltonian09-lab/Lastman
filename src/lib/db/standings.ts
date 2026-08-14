@@ -68,51 +68,79 @@ export async function recordTeamStandings(
   await runBatchedStatements(env, statements);
 }
 
-export interface TeamStandingsHistoryRow {
+export interface SeasonStandingRow {
   teamId: string;
   teamName: string;
-  positionsBySeason: Record<string, number>;
+  position: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
 }
 
-/** All finishing positions on record for every team in a league, most recent
- * season first — used for the "last 3 years" history table on /leagues/[id].
- * Teams that were promoted/relegated mid-window simply have gaps for the
- * seasons they weren't in this league. */
+export interface SeasonStandings {
+  season: string;
+  rows: SeasonStandingRow[];
+}
+
+/** Full final table for every completed season on record for a league, most
+ * recent first — used for the season-picker history view on /leagues/[id]. */
 export async function getStandingsHistory(
   leagueId: string,
   env?: Env,
-): Promise<{ seasons: string[]; teams: TeamStandingsHistoryRow[] }> {
+): Promise<SeasonStandings[]> {
   const e = env ?? (await getEnv());
   const { results } = await e.DB.prepare(
-    `SELECT team_standings.team_id, teams.name as team_name, team_standings.season, team_standings.position
+    `SELECT team_standings.team_id, teams.name as team_name, team_standings.season,
+            team_standings.position, team_standings.played, team_standings.won,
+            team_standings.drawn, team_standings.lost, team_standings.goals_for,
+            team_standings.goals_against, team_standings.points
      FROM team_standings
      JOIN teams ON teams.id = team_standings.team_id
      WHERE team_standings.league_id = ?
      ORDER BY team_standings.season DESC, team_standings.position ASC`,
   )
     .bind(leagueId)
-    .all<{ team_id: string; team_name: string; season: string; position: number }>();
+    .all<{
+      team_id: string;
+      team_name: string;
+      season: string;
+      position: number;
+      played: number | null;
+      won: number | null;
+      drawn: number | null;
+      lost: number | null;
+      goals_for: number | null;
+      goals_against: number | null;
+      points: number | null;
+    }>();
 
-  const seasons = Array.from(new Set(results.map((r) => r.season))).sort().reverse();
-
-  const teamsById = new Map<string, TeamStandingsHistoryRow>();
+  const bySeasonMap = new Map<string, SeasonStandingRow[]>();
   for (const r of results) {
-    let team = teamsById.get(r.team_id);
-    if (!team) {
-      team = { teamId: r.team_id, teamName: r.team_name, positionsBySeason: {} };
-      teamsById.set(r.team_id, team);
-    }
-    team.positionsBySeason[r.season] = r.position;
+    const rows = bySeasonMap.get(r.season) ?? [];
+    rows.push({
+      teamId: r.team_id,
+      teamName: r.team_name,
+      position: r.position,
+      played: r.played ?? 0,
+      won: r.won ?? 0,
+      drawn: r.drawn ?? 0,
+      lost: r.lost ?? 0,
+      goalsFor: r.goals_for ?? 0,
+      goalsAgainst: r.goals_against ?? 0,
+      goalDifference: (r.goals_for ?? 0) - (r.goals_against ?? 0),
+      points: r.points ?? 0,
+    });
+    bySeasonMap.set(r.season, rows);
   }
 
-  const teams = Array.from(teamsById.values()).sort((a, b) => {
-    const mostRecent = seasons[0];
-    const posA = a.positionsBySeason[mostRecent] ?? 999;
-    const posB = b.positionsBySeason[mostRecent] ?? 999;
-    return posA - posB;
-  });
-
-  return { seasons, teams };
+  return Array.from(bySeasonMap.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([season, rows]) => ({ season, rows }));
 }
 
 export async function getPreviousSeasonPositions(
