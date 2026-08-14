@@ -7,15 +7,22 @@ export interface RoundRow {
   game_id: string;
   round_number: number;
   deadline_at: string;
+  lock_at: string;
   status: "upcoming" | "locked" | "resolved";
   reminder_sent_at?: string | null;
+}
+
+function computeLockAt(kickoffAt: string, lockHoursBefore: number): string {
+  return new Date(new Date(kickoffAt).getTime() - lockHoursBefore * 3_600_000).toISOString();
 }
 
 /**
  * Ensures a round exists for the game's current gameweek window. If the most
  * recent round hasn't resolved yet, it's still current — reuse it rather than
- * creating a duplicate. Deadline is the earliest kickoff among that
- * gameweek's fixtures across every league the game covers.
+ * creating a duplicate. deadline_at is the earliest kickoff among that
+ * gameweek's fixtures (used to anchor which gameweek is shown); lock_at is
+ * when picks actually stop being accepted, offset earlier by the owner's
+ * configured pick_lock_hours_before.
  */
 export async function ensureCurrentRound(game: GameRow, env?: Env): Promise<RoundRow> {
   const e = env ?? (await getEnv());
@@ -46,10 +53,11 @@ export async function ensureCurrentRound(game: GameRow, env?: Env): Promise<Roun
         const freshFixtures = await getGameweekFixtures(game, e, healAnchor);
         if (freshFixtures.length > 0) {
           const earliestKickoff = freshFixtures.map((f) => f.kickoff_at).sort()[0];
-          await e.DB.prepare("UPDATE rounds SET deadline_at = ? WHERE id = ?")
-            .bind(earliestKickoff, existing.id)
+          const lockAt = computeLockAt(earliestKickoff, game.pick_lock_hours_before);
+          await e.DB.prepare("UPDATE rounds SET deadline_at = ?, lock_at = ? WHERE id = ?")
+            .bind(earliestKickoff, lockAt, existing.id)
             .run();
-          return { ...existing, deadline_at: earliestKickoff };
+          return { ...existing, deadline_at: earliestKickoff, lock_at: lockAt };
         }
       }
     }
@@ -72,17 +80,25 @@ export async function ensureCurrentRound(game: GameRow, env?: Env): Promise<Roun
   const earliestKickoff = fixtures.length
     ? fixtures.map((f) => f.kickoff_at).sort()[0]
     : new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const lockAt = computeLockAt(earliestKickoff, game.pick_lock_hours_before);
 
   const roundNumber = existing ? existing.round_number + 1 : 1;
   const id = crypto.randomUUID();
 
   await e.DB.prepare(
-    "INSERT INTO rounds (id, game_id, round_number, deadline_at) VALUES (?, ?, ?, ?)",
+    "INSERT INTO rounds (id, game_id, round_number, deadline_at, lock_at) VALUES (?, ?, ?, ?, ?)",
   )
-    .bind(id, game.id, roundNumber, earliestKickoff)
+    .bind(id, game.id, roundNumber, earliestKickoff, lockAt)
     .run();
 
-  return { id, game_id: game.id, round_number: roundNumber, deadline_at: earliestKickoff, status: "upcoming" };
+  return {
+    id,
+    game_id: game.id,
+    round_number: roundNumber,
+    deadline_at: earliestKickoff,
+    lock_at: lockAt,
+    status: "upcoming",
+  };
 }
 
 export async function getRoundById(id: string, env?: Env): Promise<RoundRow | null> {

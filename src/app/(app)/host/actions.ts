@@ -40,10 +40,14 @@ export async function createGameAction(
     | "public"
     | "invite_only";
   const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
+  const pickLockHoursBefore = Number(formData.get("pickLockHoursBefore") ?? 1);
 
   if (!name) return { error: "Give your game a name." };
   if (!leagueId) return { error: "Select a league." };
   if (![0, 1, 2, 3].includes(lives)) return { error: "Lives must be between 0 and 3." };
+  if (![12, 9, 6, 3, 1].includes(pickLockHoursBefore)) {
+    return { error: "Invalid pick lock time." };
+  }
   if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
     return { error: "Start date isn't valid." };
   }
@@ -79,6 +83,7 @@ export async function createGameAction(
     prizePlaces: prizeForm.prizePlaces,
     prizeSplits: prizeForm.prizeSplits,
     boobyPrizePercent: prizeForm.boobyPrizePercent,
+    pickLockHoursBefore,
   });
 
   const feeConfig = await getActiveAdminFeeConfig();

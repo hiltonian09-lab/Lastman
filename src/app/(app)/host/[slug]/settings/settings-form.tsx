@@ -26,6 +26,7 @@ export function SettingsForm({
   currentPrizeSplits,
   currentBoobyPrizePercent,
   currentLogoDataUrl,
+  currentPickLockHoursBefore,
 }: {
   slug: string;
   leagues: LeagueRow[];
@@ -43,6 +44,7 @@ export function SettingsForm({
   currentPrizeSplits: number[];
   currentBoobyPrizePercent: number;
   currentLogoDataUrl: string | null;
+  currentPickLockHoursBefore: number;
 }) {
   const action = updateSettingsAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -99,10 +101,30 @@ export function SettingsForm({
             className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
           >
             <option value="lowest_alphabetical">Auto-assign lowest alphabetical</option>
+            <option value="bottom_of_league">Auto-assign bottom of the league</option>
             <option value="eliminate">Auto-eliminate</option>
           </select>
         </label>
       </div>
+
+      <label className="flex flex-col gap-1 text-sm">
+        Picks lock
+        <select
+          name="pickLockHoursBefore"
+          defaultValue={currentPickLockHoursBefore}
+          className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
+        >
+          <option value={12}>12 hours before kickoff</option>
+          <option value={9}>9 hours before kickoff</option>
+          <option value={6}>6 hours before kickoff</option>
+          <option value={3}>3 hours before kickoff</option>
+          <option value={1}>1 hour before kickoff</option>
+        </select>
+        <span className="text-xs text-foreground-muted">
+          Applies to the next round onward — already-created rounds keep the
+          lock time they were made with.
+        </span>
+      </label>
 
       {!isOfficial && (
         <div className="grid grid-cols-2 gap-4">

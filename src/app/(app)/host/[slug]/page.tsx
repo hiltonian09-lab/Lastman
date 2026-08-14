@@ -8,7 +8,6 @@ import { listGameMessages } from "@/lib/db/messages";
 import { getSyncStatus } from "@/lib/db/sync-status";
 import { getRoundsWithStats, getEntriesWithoutPickForRound } from "@/lib/db/round-stats";
 import { getGameTrend, getGameSurvivalStats } from "@/lib/db/stats";
-import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getUpcomingFixturesPreview } from "@/lib/db/game-fixtures-preview";
 import { formatRelativeTime } from "@/lib/format/relative-time";
 import { getOrigin } from "@/lib/http/origin";
@@ -20,12 +19,23 @@ import {
   DEFAULT_PRIZE_CONFIG,
 } from "@/lib/prize";
 import { PrizeFundCard } from "@/components/prize-fund-card";
-import { LeagueInfoCard } from "@/components/league-info-card";
+import { UpcomingFixturesCard } from "@/components/league-info-card";
 import { EmptyState } from "@/components/empty-state";
 import { BroadcastForm } from "./broadcast-form";
 import { InviteLink } from "./invite-link";
 import { InviteEmailForm } from "./invite-email-form";
 import { RestartGameButton } from "./restart-button";
+
+function formatLockAt(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/London",
+  });
+}
 
 export default async function GameDashboardPage({
   params,
@@ -76,10 +86,7 @@ export default async function GameDashboardPage({
     : [];
 
   const leagueIds: string[] = JSON.parse(game.league_ids);
-  const [leagues, upcomingFixtures] = await Promise.all([
-    getLeaguesByIds(leagueIds),
-    getUpcomingFixturesPreview(leagueIds),
-  ]);
+  const upcomingFixtures = await getUpcomingFixturesPreview(leagueIds);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
@@ -119,6 +126,11 @@ export default async function GameDashboardPage({
       <p className="mt-1 text-sm text-foreground-muted">
         Status: {game.status} · {activeCount}/{entries.length} still in
       </p>
+      {currentRound && currentRound.status === "upcoming" && (
+        <p className="mt-1 text-sm text-gold">
+          Round {currentRound.round_number} picks close {formatLockAt(currentRound.lock_at)}
+        </p>
+      )}
       {fixturesSync && (
         <p className="mt-1 text-xs text-foreground-muted">
           Fixtures updated {formatRelativeTime(fixturesSync.last_synced_at)}
@@ -134,7 +146,7 @@ export default async function GameDashboardPage({
       <div className="mt-6 flex flex-col gap-4">
         <InviteLink code={game.invite_code ?? ""} origin={origin} />
         <InviteEmailForm slug={slug} />
-        <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
+        <UpcomingFixturesCard upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}
           playerCount={entries.length}

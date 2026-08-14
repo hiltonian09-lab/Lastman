@@ -64,6 +64,35 @@ export function OfficialGameForm({ leagues }: { leagues: LeagueRow[] }) {
         </label>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <label className="flex flex-col gap-1 text-sm">
+          Missed pick policy
+          <select
+            name="missedPickPolicy"
+            defaultValue="lowest_alphabetical"
+            className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
+          >
+            <option value="lowest_alphabetical">Auto-assign lowest alphabetical</option>
+            <option value="bottom_of_league">Auto-assign bottom of the league</option>
+            <option value="eliminate">Auto-eliminate</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Picks lock
+          <select
+            name="pickLockHoursBefore"
+            defaultValue={1}
+            className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
+          >
+            <option value={12}>12 hours before kickoff</option>
+            <option value={9}>9 hours before kickoff</option>
+            <option value={6}>6 hours before kickoff</option>
+            <option value={3}>3 hours before kickoff</option>
+            <option value={1}>1 hour before kickoff</option>
+          </select>
+        </label>
+      </div>
+
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 
       <button

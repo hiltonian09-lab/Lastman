@@ -38,10 +38,14 @@ export async function updateSettingsAction(
     | "public"
     | "invite_only";
   const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
+  const pickLockHoursBefore = Number(formData.get("pickLockHoursBefore") ?? 1);
 
   if (!name) return { error: "Give your game a name." };
   if (!started && !leagueId) {
     return { error: "Select a league." };
+  }
+  if (![12, 9, 6, 3, 1].includes(pickLockHoursBefore)) {
+    return { error: "Invalid pick lock time." };
   }
   if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
     return { error: "Start date isn't valid." };
@@ -84,6 +88,7 @@ export async function updateSettingsAction(
     prizeSplits: prizeForm ? prizeForm.prizeSplits : undefined,
     boobyPrizePercent: prizeForm ? prizeForm.boobyPrizePercent : undefined,
     logoDataUrl: logoResult.dataUrl,
+    pickLockHoursBefore,
   });
 
   revalidatePath(`/host/${slug}`);

@@ -2,7 +2,7 @@ import { getEnv } from "@/lib/cloudflare";
 
 export interface GameRules {
   lives: number; // 0-3, default 0
-  missedPickPolicy: "lowest_alphabetical" | "eliminate";
+  missedPickPolicy: "lowest_alphabetical" | "eliminate" | "bottom_of_league";
   tiebreaker: "split" | "total_goals";
 }
 
@@ -34,6 +34,7 @@ export interface GameRow {
   visibility: "public" | "invite_only";
   starts_at: string | null;
   logo_data_url: string | null;
+  pick_lock_hours_before: number;
   created_at: string;
 }
 
@@ -69,6 +70,7 @@ export interface CreateGameParams {
   prizePlaces: number | null;
   prizeSplits: number[] | null;
   boobyPrizePercent: number | null;
+  pickLockHoursBefore: number;
 }
 
 export async function createGame(params: CreateGameParams): Promise<GameRow> {
@@ -94,8 +96,8 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
     `INSERT INTO games
       (id, name, slug, owner_id, type, league_ids, rules_json, display_entry_fee_cents,
        display_prize_pool_note, currency, max_players, status, invite_code, visibility, starts_at,
-       prize_fund_percent, prize_places, prize_splits_json, booby_prize_percent)
-     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
+       prize_fund_percent, prize_places, prize_splits_json, booby_prize_percent, pick_lock_hours_before)
+     VALUES (?, ?, ?, ?, 'private', ?, ?, ?, ?, 'GBP', ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -114,6 +116,7 @@ export async function createGame(params: CreateGameParams): Promise<GameRow> {
       params.prizePlaces,
       params.prizeSplits ? JSON.stringify(params.prizeSplits) : null,
       params.boobyPrizePercent,
+      params.pickLockHoursBefore,
     )
     .run();
 
@@ -129,6 +132,7 @@ export interface CreateOfficialGameParams {
   maxPlayers: number | null;
   rules: GameRules;
   startsAt: string | null;
+  pickLockHoursBefore: number;
 }
 
 /**
@@ -157,8 +161,8 @@ export async function createOfficialGame(params: CreateOfficialGameParams): Prom
   await env.DB.prepare(
     `INSERT INTO games
       (id, name, slug, owner_id, type, league_ids, rules_json, currency, max_players,
-       status, invite_code, visibility, starts_at)
-     VALUES (?, ?, ?, ?, 'platform_official', ?, ?, 'GBP', ?, 'open', ?, 'public', ?)`,
+       status, invite_code, visibility, starts_at, pick_lock_hours_before)
+     VALUES (?, ?, ?, ?, 'platform_official', ?, ?, 'GBP', ?, 'open', ?, 'public', ?, ?)`,
   )
     .bind(
       id,
@@ -170,6 +174,7 @@ export async function createOfficialGame(params: CreateOfficialGameParams): Prom
       params.maxPlayers,
       inviteCode,
       params.startsAt,
+      params.pickLockHoursBefore,
     )
     .run();
 
@@ -258,6 +263,7 @@ export interface UpdateGameSettingsParams {
   prizeSplits?: number[] | null;
   boobyPrizePercent?: number | null;
   logoDataUrl?: string | null;
+  pickLockHoursBefore?: number;
 }
 
 export async function updateGameSettings(
@@ -276,7 +282,7 @@ export async function updateGameSettings(
        name = ?, league_ids = ?, rules_json = ?, max_players = ?,
        display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?, starts_at = ?,
        prize_fund_percent = ?, prize_places = ?, prize_splits_json = ?, booby_prize_percent = ?,
-       logo_data_url = ?
+       logo_data_url = ?, pick_lock_hours_before = ?
      WHERE id = ?`,
   )
     .bind(
@@ -303,6 +309,9 @@ export async function updateGameSettings(
         ? params.boobyPrizePercent
         : game.booby_prize_percent,
       params.logoDataUrl !== undefined ? params.logoDataUrl : game.logo_data_url,
+      params.pickLockHoursBefore !== undefined
+        ? params.pickLockHoursBefore
+        : game.pick_lock_hours_before,
       gameId,
     )
     .run();

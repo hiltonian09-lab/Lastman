@@ -42,7 +42,7 @@ export async function submitPickAction(
     roundId: round.id,
     fixtureId,
     teamId,
-    deadlineAt: round.deadline_at,
+    deadlineAt: round.lock_at,
   });
 
   if (!result.ok) return { error: result.error };

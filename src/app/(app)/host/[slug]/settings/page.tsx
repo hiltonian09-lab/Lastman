@@ -65,6 +65,7 @@ export default async function GameSettingsPage({
           }
           currentBoobyPrizePercent={game.booby_prize_percent ?? DEFAULT_PRIZE_CONFIG.boobyPercent}
           currentLogoDataUrl={game.logo_data_url}
+          currentPickLockHoursBefore={game.pick_lock_hours_before}
         />
       </div>
     </div>

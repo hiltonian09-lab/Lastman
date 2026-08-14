@@ -4,6 +4,7 @@ export interface RoundSummary {
   id: string;
   round_number: number;
   deadline_at: string;
+  lock_at: string;
   status: "upcoming" | "locked" | "resolved";
   wins: number;
   setbacks: number;
@@ -13,7 +14,7 @@ export interface RoundSummary {
 export async function getRoundsWithStats(gameId: string): Promise<RoundSummary[]> {
   const env = await getEnv();
   const { results } = await env.DB.prepare(
-    `SELECT rounds.id, rounds.round_number, rounds.deadline_at, rounds.status,
+    `SELECT rounds.id, rounds.round_number, rounds.deadline_at, rounds.lock_at, rounds.status,
             SUM(CASE WHEN picks.result = 'win' THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN picks.result IN ('loss', 'draw') THEN 1 ELSE 0 END) as setbacks,
             SUM(CASE WHEN picks.result = 'pending' THEN 1 ELSE 0 END) as pending

@@ -24,10 +24,14 @@ export async function createOfficialGameAction(
     formData.get("missedPickPolicy") ?? "lowest_alphabetical",
   ) as GameRules["missedPickPolicy"];
   const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
+  const pickLockHoursBefore = Number(formData.get("pickLockHoursBefore") ?? 1);
 
   if (!name) return { error: "Give the game a name." };
   if (!leagueId) return { error: "Select a league." };
   if (![0, 1, 2, 3].includes(lives)) return { error: "Lives must be between 0 and 3." };
+  if (![12, 9, 6, 3, 1].includes(pickLockHoursBefore)) {
+    return { error: "Invalid pick lock time." };
+  }
   if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
     return { error: "Start date isn't valid." };
   }
@@ -46,6 +50,7 @@ export async function createOfficialGameAction(
     maxPlayers,
     rules,
     startsAt: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
+    pickLockHoursBefore,
   });
 
   redirect(`/host/${game.slug}`);

@@ -1,4 +1,3 @@
-import "server-only";
 import { getEnv } from "@/lib/cloudflare";
 import { listTeamsByLeague } from "./teams";
 import type { FormResult } from "./team-form";

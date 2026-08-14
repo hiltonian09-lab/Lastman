@@ -17,9 +17,20 @@ import { getPreviousSeasonPositions } from "@/lib/db/standings";
 import { getLeagueTable } from "@/lib/db/league-table";
 import { parsePrizeSplits } from "@/lib/prize";
 import { PrizeFundCard } from "@/components/prize-fund-card";
-import { LeagueInfoCard } from "@/components/league-info-card";
+import { UpcomingFixturesCard } from "@/components/league-info-card";
 import { LeagueTablePreview } from "@/components/league-table-preview";
 import { PickForm } from "./pick-form";
+
+function formatLockAt(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/London",
+  });
+}
 
 export default async function PlayerGamePage({
   params,
@@ -123,6 +134,11 @@ export default async function PlayerGamePage({
         {activeCount}/{entries.length} still in
         {owner && <> · Hosted by {owner.name}</>}
       </p>
+      {round.status === "upcoming" && (
+        <p className="mt-1 text-sm text-gold">
+          Picks close {formatLockAt(round.lock_at)}
+        </p>
+      )}
 
       {messages.length > 0 && (
         <div className="glass-card mt-6 p-4">
@@ -152,7 +168,7 @@ export default async function PlayerGamePage({
       )}
 
       <div className="mt-6 flex flex-col gap-4">
-        <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
+        <UpcomingFixturesCard upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}
           playerCount={entries.length}

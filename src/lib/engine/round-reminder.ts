@@ -19,7 +19,7 @@ export async function sendRoundReminder(env: Env, round: RoundRow): Promise<void
 
     const { subject, html } = roundReminderEmail({
       gameName: game.name,
-      deadlineAt: round.deadline_at,
+      deadlineAt: round.lock_at,
       gameUrl,
     });
     await sendEmail({ to: contact.email, subject, html }, env);

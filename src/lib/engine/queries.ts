@@ -7,22 +7,22 @@ export interface ActiveEntry {
 }
 
 export async function getRoundsPastDeadline(env: Env): Promise<RoundRow[]> {
-  // deadline_at is stored as ISO 8601 ("...T...Z", from football-data.org) —
-  // must go through datetime() to normalize before comparing, otherwise
-  // SQLite compares as plain text and 'T' (0x54) > ' ' (0x20) breaks the sort.
+  // lock_at is stored as ISO 8601 ("...T...Z") — must go through datetime()
+  // to normalize before comparing, otherwise SQLite compares as plain text
+  // and 'T' (0x54) > ' ' (0x20) breaks the sort.
   const { results } = await env.DB.prepare(
-    `SELECT * FROM rounds WHERE status = 'upcoming' AND datetime(deadline_at) <= datetime('now')`,
+    `SELECT * FROM rounds WHERE status = 'upcoming' AND datetime(lock_at) <= datetime('now')`,
   ).all<RoundRow>();
   return results;
 }
 
-/** Rounds whose deadline is within the next 24h, still upcoming, no reminder sent yet. */
+/** Rounds whose pick lock is within the next 24h, still upcoming, no reminder sent yet. */
 export async function getRoundsNeedingReminder(env: Env): Promise<RoundRow[]> {
   const { results } = await env.DB.prepare(
     `SELECT * FROM rounds
      WHERE status = 'upcoming' AND reminder_sent_at IS NULL
-       AND datetime(deadline_at) <= datetime('now', '+24 hours')
-       AND datetime(deadline_at) > datetime('now')`,
+       AND datetime(lock_at) <= datetime('now', '+24 hours')
+       AND datetime(lock_at) > datetime('now')`,
   ).all<RoundRow>();
   return results;
 }

@@ -1,6 +1,7 @@
 import { getGameById, type GameRules } from "@/lib/db/games";
 import type { RoundRow } from "@/lib/db/rounds";
-import { getAvailablePicks } from "@/lib/football/round-pool";
+import { getAvailablePicks, type PickOption } from "@/lib/football/round-pool";
+import { getLeagueTable } from "@/lib/db/league-table";
 import {
   lockRound,
   getActiveEntries,
@@ -22,6 +23,27 @@ export async function lockRoundAndAutoAssign(env: Env, round: RoundRow): Promise
   const rules = JSON.parse(game.rules_json) as GameRules;
   const activeEntries = await getActiveEntries(env, round.game_id);
 
+  // Only needed for "bottom_of_league" — fetched once per round, not per entry.
+  let positionByTeamId: Map<string, number> | null = null;
+  if (rules.missedPickPolicy === "bottom_of_league") {
+    const leagueId: string | undefined = JSON.parse(game.league_ids)[0];
+    const table = leagueId ? await getLeagueTable(leagueId, 0, env) : [];
+    positionByTeamId = new Map(table.map((r) => [r.teamId, r.position]));
+  }
+
+  function pickFallback(options: PickOption[]): PickOption {
+    if (rules.missedPickPolicy === "bottom_of_league" && positionByTeamId) {
+      const sorted = [...options].sort((a, b) => {
+        const posA = positionByTeamId!.get(a.teamId) ?? Infinity;
+        const posB = positionByTeamId!.get(b.teamId) ?? Infinity;
+        return posA !== posB ? posB - posA : a.teamName.localeCompare(b.teamName);
+      });
+      return sorted[0];
+    }
+    // lowest_alphabetical (or bottom_of_league with no standings data yet)
+    return [...options].sort((a, b) => a.teamName.localeCompare(b.teamName))[0];
+  }
+
   for (const entry of activeEntries) {
     const alreadyPicked = await hasPickForRound(env, entry.id, round.id);
     if (alreadyPicked) continue;
@@ -31,7 +53,6 @@ export async function lockRoundAndAutoAssign(env: Env, round: RoundRow): Promise
       continue;
     }
 
-    // lowest_alphabetical: auto-assign the first available team, sorted alphabetically
     const options = await getAvailablePicks(
       game,
       entry.id,
@@ -45,8 +66,7 @@ export async function lockRoundAndAutoAssign(env: Env, round: RoundRow): Promise
       continue;
     }
 
-    const sorted = [...options].sort((a, b) => a.teamName.localeCompare(b.teamName));
-    const choice = sorted[0];
+    const choice = pickFallback(options);
     await insertAutoAssignedPick(env, {
       roundId: round.id,
       gameEntryId: entry.id,
