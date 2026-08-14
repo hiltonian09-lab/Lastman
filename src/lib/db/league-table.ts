@@ -1,6 +1,6 @@
 import "server-only";
 import { getEnv } from "@/lib/cloudflare";
-import { getTeamsByIds } from "./teams";
+import { listTeamsByLeague } from "./teams";
 import type { FormResult } from "./team-form";
 
 interface FinishedLeagueFixtureRow {
@@ -44,14 +44,17 @@ export async function getLeagueTable(
 ): Promise<LeagueTableRow[]> {
   const e = env ?? (await getEnv());
 
-  const { results } = await e.DB.prepare(
-    `SELECT home_team_id, away_team_id, home_score, away_score, kickoff_at
-     FROM fixtures
-     WHERE league_id = ? AND status = 'finished' AND home_score IS NOT NULL AND away_score IS NOT NULL
-     ORDER BY kickoff_at ASC`,
-  )
-    .bind(leagueId)
-    .all<FinishedLeagueFixtureRow>();
+  const [teamsInLeague, { results }] = await Promise.all([
+    listTeamsByLeague(leagueId, e),
+    e.DB.prepare(
+      `SELECT home_team_id, away_team_id, home_score, away_score, kickoff_at
+       FROM fixtures
+       WHERE league_id = ? AND status = 'finished' AND home_score IS NOT NULL AND away_score IS NOT NULL
+       ORDER BY kickoff_at ASC`,
+    )
+      .bind(leagueId)
+      .all<FinishedLeagueFixtureRow>(),
+  ]);
 
   const stats = new Map<string, TeamStats>();
 
@@ -70,6 +73,12 @@ export async function getLeagueTable(
     }
     return stats.get(teamId)!;
   }
+
+  // Seed every team in the league up front (0 played, 0 points) so the table
+  // shows the full field before a ball's been kicked, rather than being
+  // empty until the first fixtures resolve.
+  const teamNameById = new Map(teamsInLeague.map((t) => [t.id, t.name]));
+  for (const team of teamsInLeague) ensureTeam(team.id);
 
   for (const f of results) {
     const home = ensureTeam(f.home_team_id);
@@ -105,11 +114,10 @@ export async function getLeagueTable(
   }
 
   const teamIds = Array.from(stats.keys());
-  const teams = await getTeamsByIds(teamIds, e);
 
   const rows: LeagueTableRow[] = teamIds.map((teamId, index) => {
     const s = stats.get(teamId)!;
-    const name = teams.get(teamId)?.name ?? "Unknown";
+    const name = teamNameById.get(teamId) ?? "Unknown";
     return {
       teamId,
       teamName: name,

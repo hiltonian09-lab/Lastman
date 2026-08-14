@@ -35,3 +35,13 @@ export async function getTeamsByIds(ids: string[], env?: Env): Promise<Map<strin
     .all<TeamRow>();
   return new Map(results.map((t) => [t.id, t]));
 }
+
+export async function listTeamsByLeague(leagueId: string, env?: Env): Promise<TeamRow[]> {
+  const e = env ?? (await getEnv());
+  const { results } = await e.DB.prepare(
+    "SELECT * FROM teams WHERE league_id = ? ORDER BY name",
+  )
+    .bind(leagueId)
+    .all<TeamRow>();
+  return results;
+}
