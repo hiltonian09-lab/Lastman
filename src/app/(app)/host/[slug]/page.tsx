@@ -24,6 +24,7 @@ import { LeagueInfoCard } from "@/components/league-info-card";
 import { EmptyState } from "@/components/empty-state";
 import { BroadcastForm } from "./broadcast-form";
 import { InviteLink } from "./invite-link";
+import { InviteEmailForm } from "./invite-email-form";
 
 export default async function GameDashboardPage({
   params,
@@ -115,6 +116,7 @@ export default async function GameDashboardPage({
 
       <div className="mt-6 flex flex-col gap-4">
         <InviteLink code={game.invite_code ?? ""} origin={origin} />
+        <InviteEmailForm slug={slug} />
         <LeagueInfoCard leagues={leagues} upcomingFixtures={upcomingFixtures} />
         <PrizeFundCard
           entryFeeCents={game.display_entry_fee_cents}

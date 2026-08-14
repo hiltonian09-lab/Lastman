@@ -8,6 +8,9 @@ import { createMinimumFeeCheckoutSession } from "@/lib/stripe/admin-fee-checkout
 import { sendGameMessage } from "@/lib/db/messages";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { parsePrizeForm } from "@/lib/prize";
+import { sendEmail } from "@/lib/email/resend";
+import { inviteEmail } from "@/lib/email/templates";
+import { getOrigin } from "@/lib/http/origin";
 import { revalidatePath } from "next/cache";
 
 export interface HostFormState {
@@ -119,6 +122,66 @@ export async function sendBroadcastAction(
   await sendGameMessage({ gameId: game.id, senderId: user.id, body });
   revalidatePath(`/host/${slug}`);
   return { success: true };
+}
+
+export interface InviteEmailFormState {
+  error?: string;
+  success?: string;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_INVITES_PER_SEND = 30;
+
+export async function sendInviteEmailsAction(
+  slug: string,
+  _prevState: InviteEmailFormState,
+  formData: FormData,
+): Promise<InviteEmailFormState> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const game = await getGameBySlug(slug);
+  const isOwnerOrPlatformOwner =
+    !!game && (game.owner_id === user.id || user.role === "platform_owner");
+  if (!game || !isOwnerOrPlatformOwner) redirect("/dashboard");
+  if (!game.invite_code) return { error: "This game doesn't have an invite code." };
+
+  const limit = await checkRateLimit("send_invites", 5, 60);
+  if (!limit.ok) return { error: "Too many attempts. Please try again in a minute." };
+
+  const raw = String(formData.get("emails") ?? "");
+  const emails = Array.from(
+    new Set(
+      raw
+        .split(/[\n,]/)
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+
+  if (emails.length === 0) return { error: "Enter at least one email address." };
+  if (emails.length > MAX_INVITES_PER_SEND) {
+    return { error: `Send at most ${MAX_INVITES_PER_SEND} invites at a time.` };
+  }
+  const invalid = emails.filter((e) => !EMAIL_RE.test(e));
+  if (invalid.length > 0) {
+    return { error: `Not a valid email: ${invalid[0]}` };
+  }
+
+  const origin = await getOrigin();
+  const joinUrl = `${origin}/join?code=${game.invite_code}`;
+  const email = inviteEmail({
+    gameName: game.name,
+    inviterName: user.name,
+    joinUrl,
+    inviteCode: game.invite_code,
+  });
+
+  await Promise.all(
+    emails.map((to) => sendEmail({ to, subject: email.subject, html: email.html }, undefined)),
+  );
+
+  return { success: `Invite${emails.length > 1 ? "s" : ""} sent to ${emails.length} email${emails.length > 1 ? "s" : ""}.` };
 }
 
 export async function retryAdminFeePaymentAction(slug: string): Promise<void> {

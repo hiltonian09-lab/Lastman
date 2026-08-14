@@ -62,6 +62,24 @@ export function broadcastEmail(params: {
   };
 }
 
+export function inviteEmail(params: {
+  gameName: string;
+  inviterName: string;
+  joinUrl: string;
+  inviteCode: string;
+}) {
+  return {
+    subject: `${params.inviterName} invited you to ${params.gameName}`,
+    html: wrap(
+      "You're invited",
+      `<p><strong>${escapeHtml(params.inviterName)}</strong> invited you to play <strong>${escapeHtml(params.gameName)}</strong> — a Last Man Standing game on The Gauntlet.</p>
+       <p>Pick one team each round to win — get it wrong and you're out. Last one standing wins.</p>
+       <a href="${params.joinUrl}" style="${BUTTON_STYLE}">Join ${escapeHtml(params.gameName)}</a>
+       <p style="font-size: 13px; color: #6b7280; margin-top: 16px;">Or use invite code <strong>${escapeHtml(params.inviteCode)}</strong> at ${params.joinUrl.split("?")[0]}</p>`,
+    ),
+  };
+}
+
 export function gameBlockedEmail(params: { gameName: string; gameUrl: string }) {
   return {
     subject: `Action needed — ${params.gameName} is paused`,
