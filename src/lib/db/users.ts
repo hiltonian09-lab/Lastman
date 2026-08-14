@@ -19,6 +19,16 @@ export async function getUserByEmail(email: string): Promise<UserRow | null> {
   return row ?? null;
 }
 
+export async function getUserById(id: string, env?: Env): Promise<UserRow | null> {
+  const e = env ?? (await getEnv());
+  const row = await e.DB.prepare(
+    "SELECT id, email, password_hash, name, role FROM users WHERE id = ?",
+  )
+    .bind(id)
+    .first<UserRow>();
+  return row ?? null;
+}
+
 /**
  * Bootstrap mechanism for the platform_owner role — no self-serve UI for
  * this, deliberately. Any account whose email is listed in the

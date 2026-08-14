@@ -45,7 +45,8 @@ export default async function GameSettingsPage({
         <SettingsForm
           slug={slug}
           leagues={leagues}
-          currentLeagueIds={JSON.parse(game.league_ids)}
+          currentName={game.name}
+          currentLeagueId={JSON.parse(game.league_ids)[0] ?? ""}
           leaguesLocked={started}
           currentMaxPlayers={game.max_players}
           currentMissedPickPolicy={rules.missedPickPolicy}

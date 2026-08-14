@@ -244,6 +244,7 @@ export async function hasGameStarted(gameId: string): Promise<boolean> {
 }
 
 export interface UpdateGameSettingsParams {
+  name?: string;
   leagueIds?: string[];
   maxPlayers?: number | null;
   missedPickPolicy?: GameRules["missedPickPolicy"];
@@ -270,12 +271,13 @@ export async function updateGameSettings(
 
   await env.DB.prepare(
     `UPDATE games SET
-       league_ids = ?, rules_json = ?, max_players = ?,
+       name = ?, league_ids = ?, rules_json = ?, max_players = ?,
        display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?, starts_at = ?,
        prize_fund_percent = ?, prize_places = ?, prize_splits_json = ?, booby_prize_percent = ?
      WHERE id = ?`,
   )
     .bind(
+      params.name !== undefined ? params.name.trim() : game.name,
       JSON.stringify(params.leagueIds ?? JSON.parse(game.league_ids)),
       JSON.stringify(rules),
       params.maxPlayers !== undefined ? params.maxPlayers : game.max_players,

@@ -26,7 +26,8 @@ export async function updateSettingsAction(
 
   const started = await hasGameStarted(game.id);
 
-  const leagueIds = formData.getAll("leagueIds").map(String);
+  const name = String(formData.get("name") ?? "").trim();
+  const leagueId = String(formData.get("leagueId") ?? "").trim();
   const maxPlayersRaw = String(formData.get("maxPlayers") ?? "").trim();
   const missedPickPolicy = String(
     formData.get("missedPickPolicy") ?? "lowest_alphabetical",
@@ -37,8 +38,9 @@ export async function updateSettingsAction(
     | "invite_only";
   const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
 
-  if (!started && leagueIds.length === 0) {
-    return { error: "Select at least one league." };
+  if (!name) return { error: "Give your game a name." };
+  if (!started && !leagueId) {
+    return { error: "Select a league." };
   }
   if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
     return { error: "Start date isn't valid." };
@@ -61,7 +63,8 @@ export async function updateSettingsAction(
   if (prizeForm && "error" in prizeForm) return { error: prizeForm.error };
 
   await updateGameSettings(game.id, {
-    leagueIds: started ? undefined : leagueIds,
+    name,
+    leagueIds: started ? undefined : [leagueId],
     maxPlayers,
     missedPickPolicy,
     displayEntryFeeCents,

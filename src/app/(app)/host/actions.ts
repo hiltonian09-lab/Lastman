@@ -28,7 +28,7 @@ export async function createGameAction(
   if (!limit.ok) return { error: "Too many attempts. Please try again in a minute." };
 
   const name = String(formData.get("name") ?? "").trim();
-  const leagueIds = formData.getAll("leagueIds").map(String);
+  const leagueId = String(formData.get("leagueId") ?? "").trim();
   const maxPlayersRaw = String(formData.get("maxPlayers") ?? "").trim();
   const lives = Number(formData.get("lives") ?? 0);
   const missedPickPolicy = String(
@@ -42,7 +42,7 @@ export async function createGameAction(
   const startsAtRaw = String(formData.get("startsAt") ?? "").trim();
 
   if (!name) return { error: "Give your game a name." };
-  if (leagueIds.length === 0) return { error: "Select at least one league." };
+  if (!leagueId) return { error: "Select a league." };
   if (![0, 1, 2, 3].includes(lives)) return { error: "Lives must be between 0 and 3." };
   if (startsAtRaw && Number.isNaN(Date.parse(startsAtRaw))) {
     return { error: "Start date isn't valid." };
@@ -68,7 +68,7 @@ export async function createGameAction(
   const game = await createGame({
     ownerId: user.id,
     name,
-    leagueIds,
+    leagueIds: [leagueId],
     maxPlayers,
     rules,
     displayEntryFeeCents,

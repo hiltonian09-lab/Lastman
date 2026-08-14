@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateSettingsAction, type SettingsFormState } from "./actions";
 import { PrizeStructureFields } from "@/components/prize-structure-fields";
+import { LeaguePicker } from "@/components/league-picker";
 import type { LeagueRow } from "@/lib/db/leagues";
 
 const initialState: SettingsFormState = {};
@@ -10,7 +11,8 @@ const initialState: SettingsFormState = {};
 export function SettingsForm({
   slug,
   leagues,
-  currentLeagueIds,
+  currentName,
+  currentLeagueId,
   leaguesLocked,
   currentMaxPlayers,
   currentMissedPickPolicy,
@@ -25,7 +27,8 @@ export function SettingsForm({
 }: {
   slug: string;
   leagues: LeagueRow[];
-  currentLeagueIds: string[];
+  currentName: string;
+  currentLeagueId: string;
   leaguesLocked: boolean;
   currentMaxPlayers: number | null;
   currentMissedPickPolicy: string;
@@ -43,27 +46,18 @@ export function SettingsForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      <fieldset className="flex flex-col gap-2" disabled={leaguesLocked}>
-        <legend className="mb-1 text-sm font-medium">
-          Leagues to pick from {leaguesLocked && "(locked once round 1 starts)"}
-        </legend>
-        <div className="grid grid-cols-2 gap-2">
-          {leagues.map((league) => (
-            <label
-              key={league.id}
-              className={`flex items-center gap-2 rounded-lg border border-border-glass px-3 py-2 text-sm has-checked:border-royal-blue ${leaguesLocked ? "opacity-50" : ""}`}
-            >
-              <input
-                type="checkbox"
-                name="leagueIds"
-                value={league.id}
-                defaultChecked={currentLeagueIds.includes(league.id)}
-              />
-              {league.name}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <label className="flex flex-col gap-1 text-sm">
+        Game name
+        <input
+          name="name"
+          type="text"
+          required
+          defaultValue={currentName}
+          className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
+        />
+      </label>
+
+      <LeaguePicker leagues={leagues} currentLeagueId={currentLeagueId} locked={leaguesLocked} />
 
       <label className="flex flex-col gap-1 text-sm">
         Round 1 start date {leaguesLocked && "(locked once round 1 starts)"}

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug } from "@/lib/db/games";
+import { getUserById } from "@/lib/db/users";
 import { getGameEntry, getPickForRound } from "@/lib/db/picks";
 import { ensureCurrentRound } from "@/lib/db/rounds";
 import { getAvailablePicks } from "@/lib/football/round-pool";
@@ -72,7 +73,7 @@ export default async function PlayerGamePage({
 
   const round = await ensureCurrentRound(game);
   const leagueIds: string[] = JSON.parse(game.league_ids);
-  const [options, currentPick, entries, messages, fixturesSync, leagues, upcomingFixtures] =
+  const [options, currentPick, entries, messages, fixturesSync, leagues, upcomingFixtures, owner] =
     await Promise.all([
       getAvailablePicks(game, entry.id, undefined, round.id, new Date(round.deadline_at)),
       getPickForRound(entry.id, round.id),
@@ -81,6 +82,7 @@ export default async function PlayerGamePage({
       getSyncStatus("live_scores"),
       getLeaguesByIds(leagueIds),
       getUpcomingFixturesPreview(leagueIds),
+      getUserById(game.owner_id),
     ]);
 
   const leagueTables = await Promise.all(
@@ -109,6 +111,7 @@ export default async function PlayerGamePage({
       <p className="mt-1 text-sm text-foreground-muted">
         Round {round.round_number} · Lives remaining: {entry.lives_remaining} ·{" "}
         {activeCount}/{entries.length} still in
+        {owner && <> · Hosted by {owner.name}</>}
       </p>
 
       {messages.length > 0 && (
