@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getGameBySlug, hasGameStarted, updateGameSettings, type GameRules } from "@/lib/db/games";
 import { parsePrizeForm } from "@/lib/prize";
+import { parseLogoUpload } from "@/lib/logo";
 
 export interface SettingsFormState {
   error?: string;
@@ -62,6 +63,9 @@ export async function updateSettingsAction(
   const prizeForm = isOfficial ? null : parsePrizeForm(formData);
   if (prizeForm && "error" in prizeForm) return { error: prizeForm.error };
 
+  const logoResult = await parseLogoUpload(formData);
+  if (!logoResult.ok) return { error: logoResult.error };
+
   await updateGameSettings(game.id, {
     name,
     leagueIds: started ? undefined : [leagueId],
@@ -79,6 +83,7 @@ export async function updateSettingsAction(
     prizePlaces: prizeForm ? prizeForm.prizePlaces : undefined,
     prizeSplits: prizeForm ? prizeForm.prizeSplits : undefined,
     boobyPrizePercent: prizeForm ? prizeForm.boobyPrizePercent : undefined,
+    logoDataUrl: logoResult.dataUrl,
   });
 
   revalidatePath(`/host/${slug}`);

@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/empty-state";
 import { BroadcastForm } from "./broadcast-form";
 import { InviteLink } from "./invite-link";
 import { InviteEmailForm } from "./invite-email-form";
+import { RestartGameButton } from "./restart-button";
 
 export default async function GameDashboardPage({
   params,
@@ -95,9 +96,19 @@ export default async function GameDashboardPage({
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
-          {game.name}
-        </h1>
+        <div className="flex items-center gap-3">
+          {game.logo_data_url && (
+            // eslint-disable-next-line @next/next/no-img-element -- small user-uploaded data URL
+            <img
+              src={game.logo_data_url}
+              alt=""
+              className="h-10 w-10 rounded-lg border border-border-glass object-cover"
+            />
+          )}
+          <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
+            {game.name}
+          </h1>
+        </div>
         <Link
           href={`/host/${slug}/settings`}
           className="rounded-full border border-border-glass px-4 py-2 text-sm hover:bg-surface-glass"
@@ -112,6 +123,12 @@ export default async function GameDashboardPage({
         <p className="mt-1 text-xs text-foreground-muted">
           Fixtures updated {formatRelativeTime(fixturesSync.last_synced_at)}
         </p>
+      )}
+
+      {game.status === "completed" && (
+        <div className="mt-4">
+          <RestartGameButton slug={slug} />
+        </div>
       )}
 
       <div className="mt-6 flex flex-col gap-4">

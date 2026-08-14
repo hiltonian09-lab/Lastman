@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLeaguesByIds } from "@/lib/db/leagues";
 import { getLeagueTable } from "@/lib/db/league-table";
+import { getStandingsHistory } from "@/lib/db/standings";
 import { EmptyState } from "@/components/empty-state";
 import type { FormResult } from "@/lib/db/team-form";
 
@@ -38,7 +39,10 @@ export default async function LeagueDetailPage({
   const [league] = await getLeaguesByIds([id]);
   if (!league) notFound();
 
-  const table = await getLeagueTable(id);
+  const [table, history] = await Promise.all([
+    getLeagueTable(id),
+    getStandingsHistory(id),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-16">
@@ -103,6 +107,44 @@ export default async function LeagueDetailPage({
             </tbody>
           </table>
         </div>
+      )}
+
+      {history.seasons.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-[family-name:var(--font-heading)] text-lg font-medium">
+            Standings history
+          </h2>
+          <p className="mt-1 text-sm text-foreground-muted">
+            Final position by season — a blank cell means the team wasn&rsquo;t in this
+            league that season.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border-glass text-left text-foreground-muted">
+                  <th className="py-2 pr-2">Team</th>
+                  {history.seasons.map((season) => (
+                    <th key={season} className="py-2 pr-2 text-right">
+                      {season}/{String(Number(season) + 1).slice(-2)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {history.teams.map((team) => (
+                  <tr key={team.teamId} className="border-b border-border-glass/50 last:border-0">
+                    <td className="py-3 pr-2 font-medium">{team.teamName}</td>
+                    {history.seasons.map((season) => (
+                      <td key={season} className="py-3 pr-2 text-right text-foreground-muted">
+                        {team.positionsBySeason[season] ?? "—"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   );

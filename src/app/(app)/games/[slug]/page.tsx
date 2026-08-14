@@ -105,9 +105,19 @@ export default async function PlayerGamePage({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-16">
-      <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
-        {game.name}
-      </h1>
+      <div className="flex items-center gap-3">
+        {game.logo_data_url && (
+          // eslint-disable-next-line @next/next/no-img-element -- small user-uploaded data URL
+          <img
+            src={game.logo_data_url}
+            alt=""
+            className="h-10 w-10 rounded-lg border border-border-glass object-cover"
+          />
+        )}
+        <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold">
+          {game.name}
+        </h1>
+      </div>
       <p className="mt-1 text-sm text-foreground-muted">
         Round {round.round_number} · Lives remaining: {entry.lives_remaining} ·{" "}
         {activeCount}/{entries.length} still in

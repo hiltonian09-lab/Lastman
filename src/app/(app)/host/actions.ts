@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { createGame, getGameBySlug, type GameRules } from "@/lib/db/games";
+import { createGame, getGameBySlug, restartGame, type GameRules } from "@/lib/db/games";
 import { createPendingAdminFeeCharge, getActiveAdminFeeConfig } from "@/lib/db/admin-fee";
 import { createMinimumFeeCheckoutSession } from "@/lib/stripe/admin-fee-checkout";
 import { sendGameMessage } from "@/lib/db/messages";
@@ -95,6 +95,21 @@ export async function createGameAction(
   });
 
   redirect(checkoutUrl);
+}
+
+export async function restartGameAction(slug: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const game = await getGameBySlug(slug);
+  const isOwnerOrPlatformOwner =
+    !!game && (game.owner_id === user.id || user.role === "platform_owner");
+  if (!game || !isOwnerOrPlatformOwner) redirect("/dashboard");
+  if (game.status !== "completed") redirect(`/host/${slug}`);
+
+  await restartGame(game.id);
+  revalidatePath(`/host/${slug}`);
+  revalidatePath(`/games/${slug}`);
 }
 
 export interface BroadcastFormState {

@@ -68,6 +68,53 @@ export async function recordTeamStandings(
   await runBatchedStatements(env, statements);
 }
 
+export interface TeamStandingsHistoryRow {
+  teamId: string;
+  teamName: string;
+  positionsBySeason: Record<string, number>;
+}
+
+/** All finishing positions on record for every team in a league, most recent
+ * season first — used for the "last 3 years" history table on /leagues/[id].
+ * Teams that were promoted/relegated mid-window simply have gaps for the
+ * seasons they weren't in this league. */
+export async function getStandingsHistory(
+  leagueId: string,
+  env?: Env,
+): Promise<{ seasons: string[]; teams: TeamStandingsHistoryRow[] }> {
+  const e = env ?? (await getEnv());
+  const { results } = await e.DB.prepare(
+    `SELECT team_standings.team_id, teams.name as team_name, team_standings.season, team_standings.position
+     FROM team_standings
+     JOIN teams ON teams.id = team_standings.team_id
+     WHERE team_standings.league_id = ?
+     ORDER BY team_standings.season DESC, team_standings.position ASC`,
+  )
+    .bind(leagueId)
+    .all<{ team_id: string; team_name: string; season: string; position: number }>();
+
+  const seasons = Array.from(new Set(results.map((r) => r.season))).sort().reverse();
+
+  const teamsById = new Map<string, TeamStandingsHistoryRow>();
+  for (const r of results) {
+    let team = teamsById.get(r.team_id);
+    if (!team) {
+      team = { teamId: r.team_id, teamName: r.team_name, positionsBySeason: {} };
+      teamsById.set(r.team_id, team);
+    }
+    team.positionsBySeason[r.season] = r.position;
+  }
+
+  const teams = Array.from(teamsById.values()).sort((a, b) => {
+    const mostRecent = seasons[0];
+    const posA = a.positionsBySeason[mostRecent] ?? 999;
+    const posB = b.positionsBySeason[mostRecent] ?? 999;
+    return posA - posB;
+  });
+
+  return { seasons, teams };
+}
+
 export async function getPreviousSeasonPositions(
   teamIds: string[],
   env?: Env,

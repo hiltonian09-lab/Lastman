@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { updateSettingsAction, type SettingsFormState } from "./actions";
 import { PrizeStructureFields } from "@/components/prize-structure-fields";
 import { LeaguePicker } from "@/components/league-picker";
+import { LogoUploadField } from "@/components/logo-upload-field";
 import type { LeagueRow } from "@/lib/db/leagues";
 
 const initialState: SettingsFormState = {};
@@ -24,6 +25,7 @@ export function SettingsForm({
   currentPrizePlaces,
   currentPrizeSplits,
   currentBoobyPrizePercent,
+  currentLogoDataUrl,
 }: {
   slug: string;
   leagues: LeagueRow[];
@@ -40,6 +42,7 @@ export function SettingsForm({
   currentPrizePlaces: number;
   currentPrizeSplits: number[];
   currentBoobyPrizePercent: number;
+  currentLogoDataUrl: string | null;
 }) {
   const action = updateSettingsAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -56,6 +59,8 @@ export function SettingsForm({
           className="rounded-lg border border-border-glass bg-transparent px-3 py-2 outline-none focus:border-royal-blue"
         />
       </label>
+
+      <LogoUploadField currentLogoDataUrl={currentLogoDataUrl} />
 
       <LeaguePicker leagues={leagues} currentLeagueId={currentLeagueId} locked={leaguesLocked} />
 

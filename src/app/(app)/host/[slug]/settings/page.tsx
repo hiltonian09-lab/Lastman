@@ -64,6 +64,7 @@ export default async function GameSettingsPage({
             parsePrizeSplits(game.prize_splits_json) ?? DEFAULT_PRIZE_CONFIG.splitPercents
           }
           currentBoobyPrizePercent={game.booby_prize_percent ?? DEFAULT_PRIZE_CONFIG.boobyPercent}
+          currentLogoDataUrl={game.logo_data_url}
         />
       </div>
     </div>

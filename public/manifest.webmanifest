@@ -1,0 +1,19 @@
+{
+  "name": "The Gauntlet — Last Man Standing",
+  "short_name": "The Gauntlet",
+  "description": "Pick a team every gameweek. Get it wrong and you're out. Last one standing wins.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#05070f",
+  "theme_color": "#0042c7",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

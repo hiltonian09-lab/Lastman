@@ -33,6 +33,7 @@ export interface GameRow {
   invite_code: string | null;
   visibility: "public" | "invite_only";
   starts_at: string | null;
+  logo_data_url: string | null;
   created_at: string;
 }
 
@@ -256,6 +257,7 @@ export interface UpdateGameSettingsParams {
   prizePlaces?: number | null;
   prizeSplits?: number[] | null;
   boobyPrizePercent?: number | null;
+  logoDataUrl?: string | null;
 }
 
 export async function updateGameSettings(
@@ -273,7 +275,8 @@ export async function updateGameSettings(
     `UPDATE games SET
        name = ?, league_ids = ?, rules_json = ?, max_players = ?,
        display_entry_fee_cents = ?, display_prize_pool_note = ?, visibility = ?, starts_at = ?,
-       prize_fund_percent = ?, prize_places = ?, prize_splits_json = ?, booby_prize_percent = ?
+       prize_fund_percent = ?, prize_places = ?, prize_splits_json = ?, booby_prize_percent = ?,
+       logo_data_url = ?
      WHERE id = ?`,
   )
     .bind(
@@ -299,6 +302,7 @@ export async function updateGameSettings(
       params.boobyPrizePercent !== undefined
         ? params.boobyPrizePercent
         : game.booby_prize_percent,
+      params.logoDataUrl !== undefined ? params.logoDataUrl : game.logo_data_url,
       gameId,
     )
     .run();
@@ -316,4 +320,27 @@ export async function setGameStatus(
   )
     .bind(status, blockedReason, status, gameId)
     .run();
+}
+
+/**
+ * Starts a fresh season for a completed game: every entrant is reset to
+ * active with a full set of lives, and the game reopens for picks. Past
+ * rounds/picks are left untouched (round numbering just keeps climbing
+ * rather than resetting to 1) so pick history stays fully browsable —
+ * nothing is deleted, only game_entries and the game's own status change.
+ */
+export async function restartGame(gameId: string, env?: Env): Promise<void> {
+  const e = env ?? (await getEnv());
+  const game = await getGameById(gameId, e);
+  if (!game) throw new Error("Game not found");
+  if (game.status !== "completed") throw new Error("Only a completed game can be restarted");
+
+  const rules = JSON.parse(game.rules_json) as GameRules;
+
+  await e.DB.batch([
+    e.DB.prepare(
+      "UPDATE game_entries SET status = 'active', lives_remaining = ?, eliminated_at_round_id = NULL WHERE game_id = ?",
+    ).bind(rules.lives, gameId),
+    e.DB.prepare("UPDATE games SET status = 'open' WHERE id = ?").bind(gameId),
+  ]);
 }
